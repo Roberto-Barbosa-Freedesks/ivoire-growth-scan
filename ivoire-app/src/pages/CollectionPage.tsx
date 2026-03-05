@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/store';
 import { SUBDIMENSIONS, DIMENSION_CONFIG } from '../data/scorecard';
-import { fetchPageSpeed, scorePerformanceWeb, simulateCollection } from '../services/pagespeed';
+import { fetchPageSpeedWithTech, scorePerformanceWeb, simulateCollection } from '../services/pagespeed';
+import type { TechDetectionResult } from '../services/pagespeed';
 import { scoreToLevel } from '../services/scoring';
 import type { DimensionKey, CollectionStatus, SubdimensionScore } from '../types';
 
@@ -122,6 +123,7 @@ export default function CollectionPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [isFinalized, setIsFinalized] = useState(false);
   const hasStarted = useRef(false);
+  const realTechRef = useRef<TechDetectionResult | undefined>(undefined);
 
   const relevantSubdims = SUBDIMENSIONS.filter((sd) => {
     if (sd.isConditional && !diagnostic?.input.isEcommerce) return false;
@@ -154,14 +156,12 @@ export default function CollectionPage() {
 
           if (subdim.id === 'performance_web') {
             try {
-              const [mobile, desktop] = await Promise.all([
-                fetchPageSpeed(siteUrl, 'mobile', pageSpeedApiKey || undefined),
-                fetchPageSpeed(siteUrl, 'desktop', pageSpeedApiKey || undefined),
-              ]);
+              const { mobile, desktop, tech } = await fetchPageSpeedWithTech(siteUrl, pageSpeedApiKey || undefined);
+              realTechRef.current = tech;
               score = scorePerformanceWeb(mobile, desktop);
-              rawData = { mobile, desktop };
+              rawData = { mobile, desktop, tech };
               source = 'auto';
-              preview = `Mobile: ${mobile.mobileScore}/100 · LCP: ${mobile.lcp.toFixed(1)}s · CLS: ${mobile.cls.toFixed(2)}`;
+              preview = `Mobile: ${mobile.mobileScore}/100 · LCP: ${mobile.lcp.toFixed(1)}s · GTM: ${tech.gtmInstalled ? 'Sim' : 'Não'} · GA4: ${tech.ga4Installed ? 'Sim' : 'Não'}`;
             } catch {
               // Fallback to simulation if PageSpeed API fails
               const result = await simulateCollection(subdim.id, siteUrl);
@@ -171,7 +171,7 @@ export default function CollectionPage() {
               preview = `Score simulado: ${score}/4 (API indisponível)`;
             }
           } else {
-            const result = await simulateCollection(subdim.id, siteUrl);
+            const result = await simulateCollection(subdim.id, siteUrl, realTechRef.current);
             score = result.score;
             rawData = result.data;
             source = result.source;

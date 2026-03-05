@@ -4,13 +4,15 @@ import { useAppStore } from '../../store/store';
 import { LEVEL_CONFIG } from '../../data/scorecard';
 import { exportToDOCX } from '../../services/export/docx';
 import { exportToPPTX } from '../../services/export/pptx';
+import { exportToXLSX } from '../../services/export/xlsx';
 import OverviewPage from './OverviewPage';
 import DimensionPage from './DimensionPage';
 import InsightsPage from './InsightsPage';
 import RecommendationsPage from './RecommendationsPage';
+import CompetitorPage from './CompetitorPage';
 import type { DimensionKey } from '../../types';
 
-type TabKey = 'overview' | 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE' | 'insights' | 'recommendations';
+type TabKey = 'overview' | 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE' | 'insights' | 'recommendations' | 'competitors';
 
 interface Tab {
   key: TabKey;
@@ -25,6 +27,7 @@ const TABS: Tab[] = [
   { key: 'CONTROLE', label: 'Controle' },
   { key: 'insights', label: 'Insights' },
   { key: 'recommendations', label: 'Recomendações' },
+  { key: 'competitors', label: 'Concorrentes' },
 ];
 
 const DIMENSION_TABS: TabKey[] = ['CONTEUDO', 'CANAIS', 'CONVERSAO', 'CONTROLE'];
@@ -34,7 +37,7 @@ export default function ResultsLayout() {
   const navigate = useNavigate();
   const { getDiagnostic } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
-  const [isExporting, setIsExporting] = useState<'docx' | 'pptx' | null>(null);
+  const [isExporting, setIsExporting] = useState<'docx' | 'pptx' | 'xlsx' | null>(null);
 
   const diagnostic = diagnosticId ? getDiagnostic(diagnosticId) : undefined;
 
@@ -85,6 +88,16 @@ export default function ResultsLayout() {
     }
   }
 
+  async function handleExportXLSX() {
+    if (!diagnostic || isExporting) return;
+    setIsExporting('xlsx');
+    try {
+      await exportToXLSX(diagnostic);
+    } finally {
+      setIsExporting(null);
+    }
+  }
+
   function renderContent() {
     if (activeTab === 'overview') return <OverviewPage diagnostic={diagnostic!} />;
     if (DIMENSION_TABS.includes(activeTab)) {
@@ -92,6 +105,7 @@ export default function ResultsLayout() {
     }
     if (activeTab === 'insights') return <InsightsPage diagnostic={diagnostic!} />;
     if (activeTab === 'recommendations') return <RecommendationsPage diagnostic={diagnostic!} />;
+    if (activeTab === 'competitors') return <CompetitorPage diagnostic={diagnostic!} />;
     return null;
   }
 
@@ -190,6 +204,7 @@ export default function ResultsLayout() {
               className="btn-secondary"
               onClick={handleExportDOCX}
               disabled={isExporting !== null}
+              title="Download relatório executivo Word"
               style={{ fontSize: 13, padding: '10px 18px' }}
             >
               {isExporting === 'docx' ? (
@@ -203,6 +218,7 @@ export default function ResultsLayout() {
               className="btn-secondary"
               onClick={handleExportPPTX}
               disabled={isExporting !== null}
+              title="Download apresentação PowerPoint"
               style={{ fontSize: 13, padding: '10px 18px' }}
             >
               {isExporting === 'pptx' ? (
@@ -211,6 +227,20 @@ export default function ResultsLayout() {
                 '↓'
               )}
               PPTX
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={handleExportXLSX}
+              disabled={isExporting !== null}
+              title="Download planilha completa de auditoria (CSV)"
+              style={{ fontSize: 13, padding: '10px 18px' }}
+            >
+              {isExporting === 'xlsx' ? (
+                <span className="spin" style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }} />
+              ) : (
+                '↓'
+              )}
+              CSV
             </button>
           </div>
         </div>

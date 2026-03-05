@@ -24,7 +24,7 @@ export default function LoginPage() {
       if (success) {
         navigate('/dashboard');
       } else {
-        setError('Acesso negado. Use um email @ivoire.com.br válido.');
+        setError('Acesso negado. Use um email @ivoire.ag válido.');
       }
     } catch {
       setError('Erro inesperado. Tente novamente.');
@@ -292,7 +292,7 @@ export default function LoginPage() {
                 className="ivoire-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@ivoire.com.br"
+                placeholder="seu@ivoire.ag"
                 autoComplete="email"
                 autoFocus
                 disabled={loading}
@@ -416,10 +416,10 @@ export default function LoginPage() {
               }}
             >
               Use qualquer email{' '}
-              <span style={{ color: '#FFFF02', fontWeight: 700 }}>@ivoire.com.br</span>
+              <span style={{ color: '#FFFF02', fontWeight: 700 }}>@ivoire.ag</span>
               <br />
               Demo:{' '}
-              <span style={{ color: '#B7B7B7' }}>demo@ivoire.com.br</span>{' '}
+              <span style={{ color: '#B7B7B7' }}>demo@ivoire.ag</span>{' '}
               / qualquer senha
             </p>
           </div>

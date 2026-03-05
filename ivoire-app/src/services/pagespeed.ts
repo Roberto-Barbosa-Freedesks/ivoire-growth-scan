@@ -2,6 +2,78 @@ import type { PageSpeedData } from '../types';
 
 const PAGESPEED_API = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
+export interface TechDetectionResult {
+  gtmInstalled: boolean;
+  ga4Installed: boolean;
+  metaPixel: boolean;
+  linkedinInsightTag: boolean;
+  tiktokPixel: boolean;
+  hotjarInstalled: boolean;
+  hubspotInstalled: boolean;
+  intercomInstalled: boolean;
+  consentModeV2: boolean;
+  thirdPartyDomains: string[];
+  totalThirdParties: number;
+}
+
+const TECH_PATTERNS: Array<{ key: keyof TechDetectionResult; patterns: string[] }> = [
+  { key: 'gtmInstalled', patterns: ['googletagmanager.com'] },
+  { key: 'ga4Installed', patterns: ['google-analytics.com', 'analytics.google.com', 'gtag/js'] },
+  { key: 'metaPixel', patterns: ['connect.facebook.net', 'facebook.com/tr'] },
+  { key: 'linkedinInsightTag', patterns: ['snap.licdn.com', 'linkedin.com/px'] },
+  { key: 'tiktokPixel', patterns: ['analytics.tiktok.com', 'tiktok.com'] },
+  { key: 'hotjarInstalled', patterns: ['hotjar.com', 'static.hotjar.com'] },
+  { key: 'hubspotInstalled', patterns: ['js.hs-scripts.com', 'hubspot.com', 'hs-analytics.net'] },
+  { key: 'intercomInstalled', patterns: ['intercomcdn.com', 'intercom.io'] },
+  { key: 'consentModeV2', patterns: ['consent.js', 'consentmode', 'cookieyes.com', 'cookiebot.com', 'onetrust.com'] },
+];
+
+export function extractTechDetection(lighthouseResult: Record<string, unknown>): TechDetectionResult {
+  const audits = (lighthouseResult?.audits || {}) as Record<string, unknown>;
+  const thirdPartySummary = audits['third-party-summary'] as { details?: { items?: Array<{ entity: string }> } } | undefined;
+  const networkRequests = audits['network-requests'] as { details?: { items?: Array<{ url: string }> } } | undefined;
+
+  // Collect all URLs from network requests
+  const allUrls: string[] = [];
+  if (networkRequests?.details?.items) {
+    for (const item of networkRequests.details.items) {
+      if (item.url) allUrls.push(item.url.toLowerCase());
+    }
+  }
+
+  // Also collect entity names from third-party summary
+  const entityNames: string[] = [];
+  if (thirdPartySummary?.details?.items) {
+    for (const item of thirdPartySummary.details.items) {
+      if (item.entity) entityNames.push(item.entity.toLowerCase());
+    }
+  }
+
+  const allSignals = [...allUrls, ...entityNames].join(' ');
+
+  const result: TechDetectionResult = {
+    gtmInstalled: false,
+    ga4Installed: false,
+    metaPixel: false,
+    linkedinInsightTag: false,
+    tiktokPixel: false,
+    hotjarInstalled: false,
+    hubspotInstalled: false,
+    intercomInstalled: false,
+    consentModeV2: false,
+    thirdPartyDomains: entityNames.slice(0, 10),
+    totalThirdParties: thirdPartySummary?.details?.items?.length || 0,
+  };
+
+  for (const { key, patterns } of TECH_PATTERNS) {
+    if (patterns.some((p) => allSignals.includes(p))) {
+      (result as unknown as Record<string, unknown>)[key] = true;
+    }
+  }
+
+  return result;
+}
+
 export async function fetchPageSpeed(
   url: string,
   strategy: 'mobile' | 'desktop',
@@ -42,6 +114,48 @@ export async function fetchPageSpeed(
   };
 }
 
+export async function fetchPageSpeedWithTech(
+  url: string,
+  apiKey?: string
+): Promise<{ mobile: PageSpeedData; desktop: PageSpeedData; tech: TechDetectionResult }> {
+  const [mobileRes, desktopRes] = await Promise.all([
+    fetch(`${PAGESPEED_API}?${new URLSearchParams({ url, strategy: 'mobile', ...(apiKey ? { key: apiKey } : {}) })}`),
+    fetch(`${PAGESPEED_API}?${new URLSearchParams({ url, strategy: 'desktop', ...(apiKey ? { key: apiKey } : {}) })}`),
+  ]);
+
+  if (!mobileRes.ok) throw new Error(`PageSpeed mobile error: ${mobileRes.status}`);
+  if (!desktopRes.ok) throw new Error(`PageSpeed desktop error: ${desktopRes.status}`);
+
+  const [mobileData, desktopData] = await Promise.all([mobileRes.json(), desktopRes.json()]);
+
+  const parsePSD = (data: Record<string, unknown>, strategy: 'mobile' | 'desktop'): PageSpeedData => {
+    const cats = (data.lighthouseResult as Record<string, unknown>)?.categories as Record<string, { score: number }> || {};
+    const audits = (data.lighthouseResult as Record<string, unknown>)?.audits as Record<string, { numericValue?: number }> || {};
+    return {
+      url,
+      strategy,
+      mobileScore: strategy === 'mobile' ? Math.round((cats.performance?.score || 0) * 100) : 0,
+      desktopScore: strategy === 'desktop' ? Math.round((cats.performance?.score || 0) * 100) : 0,
+      accessibilityScore: Math.round((cats.accessibility?.score || 0) * 100),
+      bestPracticesScore: Math.round((cats['best-practices']?.score || 0) * 100),
+      seoScore: Math.round((cats.seo?.score || 0) * 100),
+      lcp: (audits['largest-contentful-paint']?.numericValue || 0) / 1000,
+      inp: audits['interaction-to-next-paint']?.numericValue,
+      cls: audits['cumulative-layout-shift']?.numericValue || 0,
+      fcp: (audits['first-contentful-paint']?.numericValue || 0) / 1000,
+      ttfb: audits['server-response-time']?.numericValue || 0,
+    };
+  };
+
+  const tech = extractTechDetection(mobileData.lighthouseResult || {});
+
+  return {
+    mobile: parsePSD(mobileData, 'mobile'),
+    desktop: parsePSD(desktopData, 'desktop'),
+    tech,
+  };
+}
+
 export function scorePerformanceWeb(mobile: PageSpeedData, desktop: PageSpeedData): number {
   const lcp = mobile.lcp;
   const cls = mobile.cls;
@@ -76,18 +190,41 @@ export function scorePerformanceWeb(mobile: PageSpeedData, desktop: PageSpeedDat
   return Math.max(1, Math.min(4, Math.round(weighted * 10) / 10));
 }
 
+export function scoreTechDetection(tech: TechDetectionResult): number {
+  let score = 1;
+  const checks = [
+    tech.gtmInstalled,
+    tech.ga4Installed,
+    tech.metaPixel,
+    tech.linkedinInsightTag || tech.tiktokPixel,
+    tech.consentModeV2,
+    tech.hotjarInstalled || tech.hubspotInstalled || tech.intercomInstalled,
+  ];
+  const passed = checks.filter(Boolean).length;
+  if (passed >= 5) score = 4;
+  else if (passed >= 3) score = 3;
+  else if (passed >= 2) score = 2;
+  return score;
+}
+
 // Simulate collection for APIs not available in browser
 export async function simulateCollection(
   subdimensionId: string,
-  siteUrl: string
+  siteUrl: string,
+  realTech?: TechDetectionResult
 ): Promise<{ score: number; data: Record<string, unknown>; source: 'auto' | 'manual' | 'insufficient' }> {
   // Deterministic pseudo-random based on URL + subdimension for demo consistency
   const seed = hashCode(siteUrl + subdimensionId);
   const rand = seededRandom(seed);
 
-  // Generate a score with realistic distribution
-  const rawScore = 1 + rand() * 3; // 1–4
-  const score = Math.max(1, Math.min(4, Math.round(rawScore)));
+  // For tracking/stack subdimensions use real tech detection if available
+  let score: number;
+  if (realTech && (subdimensionId === 'tracking_health' || subdimensionId === 'stack_martech')) {
+    score = scoreTechDetection(realTech);
+  } else {
+    const rawScore = 1 + rand() * 3; // 1–4
+    score = Math.max(1, Math.min(4, Math.round(rawScore)));
+  }
 
   await delay(500 + rand() * 1000);
 
@@ -149,14 +286,36 @@ export async function simulateCollection(
       reclaimeAquiScore: 5.0 + rand() * 5.0,
       reclaimeAquiSolutionIndex: Math.floor(50 + rand() * 50),
     },
-    stack_martech: {
+    stack_martech: realTech ? {
+      totalTechnologies: realTech.totalThirdParties,
+      categoriesCovered: [
+        ...(realTech.ga4Installed ? ['Analytics'] : []),
+        ...(realTech.gtmInstalled ? ['Tag Management'] : []),
+        ...(realTech.hubspotInstalled ? ['CRM/Automation'] : []),
+        ...(realTech.intercomInstalled ? ['Suporte/Chat'] : []),
+        ...(realTech.hotjarInstalled ? ['Heatmap/UX'] : []),
+      ],
+      gtmInstalled: realTech.gtmInstalled,
+      ga4Installed: realTech.ga4Installed,
+      cdpInstalled: false,
+      thirdPartyDomains: realTech.thirdPartyDomains,
+    } : {
       totalTechnologies: Math.floor(5 + rand() * 30),
       categoriesCovered: ['Analytics', 'Tag Management'],
       gtmInstalled: rand() > 0.4,
       ga4Installed: rand() > 0.3,
       cdpInstalled: rand() > 0.8,
     },
-    tracking_health: {
+    tracking_health: realTech ? {
+      gtmPresent: realTech.gtmInstalled,
+      ga4Configured: realTech.ga4Installed,
+      metaPixel: realTech.metaPixel,
+      linkedinInsightTag: realTech.linkedinInsightTag,
+      tiktokPixel: realTech.tiktokPixel,
+      hotjarInstalled: realTech.hotjarInstalled,
+      consentModeV2: realTech.consentModeV2,
+      tagConflicts: 0,
+    } : {
       gtmPresent: rand() > 0.4,
       ga4Configured: rand() > 0.4,
       metaPixel: rand() > 0.5,

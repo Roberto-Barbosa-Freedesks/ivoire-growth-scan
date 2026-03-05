@@ -71,13 +71,21 @@ export function calculateOverallScore(dimensionScores: DimensionScore[]): number
 
 export function generateInsights(
   subdimensionScores: SubdimensionScore[],
-  dimensionScores: DimensionScore[]
+  dimensionScores: DimensionScore[],
+  isEcommerce = false
 ): Insight[] {
   const insights: Insight[] = [];
 
+  const eligibleScores = subdimensionScores.filter((s) => {
+    if (s.source === 'skipped') return false;
+    const subdimDef = SUBDIMENSIONS.find((sd) => sd.id === s.subdimensionId);
+    if (subdimDef?.isConditional && !isEcommerce) return false;
+    return true;
+  });
+
   // Gap crítico: subdimensions scoring 1 (Intuitivo)
-  subdimensionScores
-    .filter((s) => s.score === 1 && s.source !== 'skipped')
+  eligibleScores
+    .filter((s) => s.score === 1)
     .slice(0, 3)
     .forEach((s, i) => {
       const subdim = SUBDIMENSIONS.find((sd) => sd.id === s.subdimensionId);
@@ -94,8 +102,8 @@ export function generateInsights(
     });
 
   // Alavancas: subdimensions scoring 3 (Ativo → Exponencial)
-  subdimensionScores
-    .filter((s) => s.score === 3 && s.source !== 'skipped')
+  eligibleScores
+    .filter((s) => s.score === 3)
     .slice(0, 2)
     .forEach((s, i) => {
       insights.push({
@@ -132,14 +140,20 @@ export function generateInsights(
 }
 
 export function generateRecommendations(
-  subdimensionScores: SubdimensionScore[]
+  subdimensionScores: SubdimensionScore[],
+  isEcommerce = false
 ): Recommendation[] {
   const recommendations: Recommendation[] = [];
   let priority = 1;
 
-  // Prioritize by score ascending (worst first)
+  // Prioritize by score ascending (worst first), exclude conditional for non-ecommerce
   const sorted = [...subdimensionScores]
-    .filter((s) => s.source !== 'skipped')
+    .filter((s) => {
+      if (s.source === 'skipped') return false;
+      const subdimDef = SUBDIMENSIONS.find((sd) => sd.id === s.subdimensionId);
+      if (subdimDef?.isConditional && !isEcommerce) return false;
+      return true;
+    })
     .sort((a, b) => a.score - b.score);
 
   for (const score of sorted) {
@@ -197,8 +211,8 @@ export function finalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
   );
   const overallScore = calculateOverallScore(dimensionScores);
   const overallLevel = scoreToLevel(overallScore);
-  const insights = generateInsights(diagnostic.subdimensionScores, dimensionScores);
-  const recommendations = generateRecommendations(diagnostic.subdimensionScores);
+  const insights = generateInsights(diagnostic.subdimensionScores, dimensionScores, diagnostic.input.isEcommerce);
+  const recommendations = generateRecommendations(diagnostic.subdimensionScores, diagnostic.input.isEcommerce);
   const executiveNarrative = generateExecutiveNarrative(
     diagnostic.input.companyName,
     overallScore,

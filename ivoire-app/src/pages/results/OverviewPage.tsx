@@ -5,6 +5,11 @@ import {
   Radar,
   ResponsiveContainer,
   Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Cell,
 } from 'recharts';
 import { DIMENSION_CONFIG, LEVEL_CONFIG } from '../../data/scorecard';
 import { scoreToLevel } from '../../services/scoring';
@@ -101,6 +106,7 @@ function CustomRadarTooltip({ active, payload }: { active?: boolean; payload?: A
 }
 
 export default function OverviewPage({ diagnostic }: Props) {
+  // diagnostic is used in key metrics row below
   const overallScore = diagnostic.overallScore ?? 0;
   const overallLevel = diagnostic.overallLevel ?? 'Intuitivo';
   const dimensionScores = diagnostic.dimensionScores ?? [];
@@ -354,6 +360,73 @@ export default function OverviewPage({ diagnostic }: Props) {
             </div>
           );
         })}
+      </div>
+
+      {/* Dimension bar chart */}
+      <div className="ivoire-card" style={{ padding: '24px 28px', marginBottom: 28 }}>
+        <div className="font-montserrat" style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+          Score por Dimensão — Comparativo Visual
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={DIMENSION_ORDER.map((k) => {
+            const d = dimensionScores.find((x) => x.key === k);
+            const sc = d?.score ?? 1;
+            return { name: DIMENSION_CONFIG[k].label, score: sc, fill: levelColors[d?.level ?? 'Intuitivo'] };
+          })} barSize={48} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+            <XAxis dataKey="name" tick={{ fill: '#888', fontSize: 11, fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: '#555', fontSize: 10, fontFamily: 'Montserrat, sans-serif' }} axisLine={false} tickLine={false} />
+            <Tooltip
+              cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+              contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, fontSize: 12, fontFamily: 'Arvo, serif', color: '#ccc' }}
+              formatter={(v: number | undefined) => v != null ? [`${v.toFixed(2)} / 4.0 — ${scoreToLevel(v)}`, 'Score'] : ['', 'Score']}
+            />
+            <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+              {DIMENSION_ORDER.map((k, i) => {
+                const d = dimensionScores.find((x) => x.key === k);
+                return <Cell key={i} fill={levelColors[d?.level ?? 'Intuitivo']} fillOpacity={0.85} />;
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        {/* Benchmark reference lines annotation */}
+        <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+          {[{ label: 'Intuitivo', range: '1.0–1.74', color: '#ff4d4d' }, { label: 'Reativo', range: '1.75–2.49', color: '#ff9900' }, { label: 'Ativo', range: '2.50–3.24', color: '#00cc66' }, { label: 'Exponencial', range: '3.25–4.0', color: '#FFFF02' }].map(({ label, range, color }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+              <span style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif' }}>{label} ({range})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Key metrics row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        {[
+          {
+            label: 'Subdimensões Avaliadas',
+            value: String(diagnostic.subdimensionScores.filter((s) => s.source !== 'skipped').length),
+            sub: `de ${diagnostic.subdimensionScores.length} totais`,
+            color: '#FFFF02',
+          },
+          {
+            label: 'Gaps Críticos (Score 1)',
+            value: String(diagnostic.subdimensionScores.filter((s) => s.score === 1 && s.source !== 'skipped').length),
+            sub: 'subdimensões em nível Intuitivo',
+            color: '#ff4d4d',
+          },
+          {
+            label: 'Forças (Score ≥ 3)',
+            value: String(diagnostic.subdimensionScores.filter((s) => s.score >= 3 && s.source !== 'skipped').length),
+            sub: 'subdimensões em nível Ativo ou Exponencial',
+            color: '#00cc66',
+          },
+        ].map(({ label, value, sub, color }) => (
+          <div key={label} className="ivoire-card" style={{ padding: '20px 22px', textAlign: 'center' }}>
+            <div className="font-bebas" style={{ fontSize: 48, color, lineHeight: 1 }}>{value}</div>
+            <div className="font-montserrat" style={{ fontSize: 11, fontWeight: 700, color: '#aaa', marginTop: 4, letterSpacing: 0.5 }}>{label}</div>
+            <div style={{ fontSize: 11, color: '#555', fontFamily: 'Arvo, serif', marginTop: 4 }}>{sub}</div>
+          </div>
+        ))}
       </div>
 
       <div className="ivoire-divider" />

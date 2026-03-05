@@ -29,9 +29,9 @@ interface AppState {
 }
 
 const DEMO_USERS: User[] = [
-  { id: '1', name: 'Ana Carolina', email: 'ana@ivoire.com.br', role: 'consultor' },
-  { id: '2', name: 'Roberto Barbosa', email: 'roberto@ivoire.com.br', role: 'admin' },
-  { id: '3', name: 'Demo', email: 'demo@ivoire.com.br', role: 'consultor' },
+  { id: '1', name: 'Ana Carolina', email: 'ana@ivoire.ag', role: 'consultor' },
+  { id: '2', name: 'Roberto Barbosa', email: 'roberto.barbosa@ivoire.ag', role: 'admin' },
+  { id: '3', name: 'Demo Ivoire', email: 'demo@ivoire.ag', role: 'consultor' },
 ];
 
 export const useAppStore = create<AppState>()(
@@ -50,8 +50,8 @@ export const useAppStore = create<AppState>()(
           set({ user, isAuthenticated: true });
           return true;
         }
-        // Also accept any @ivoire.com.br
-        if (email.endsWith('@ivoire.com.br')) {
+        // Also accept any @ivoire.ag
+        if (email.endsWith('@ivoire.ag')) {
           const newUser: User = {
             id: Date.now().toString(),
             name: email.split('@')[0],
