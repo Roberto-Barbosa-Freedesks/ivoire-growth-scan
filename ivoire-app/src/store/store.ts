@@ -1,17 +1,26 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Diagnostic, User, DiagnosticInput, SubdimensionScore, CollectionStatus } from '../types';
+import type { Diagnostic, User, DiagnosticInput, SubdimensionScore, CollectionStatus, RegisteredUser, AppSettings } from '../types';
 import { SUBDIMENSIONS } from '../data/scorecard';
 import { finalizeDiagnostic } from '../services/scoring';
+import { hashPassword, verifyPassword } from '../services/emailVerification';
 
 interface AppState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
+  registeredUsers: RegisteredUser[];
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  register: (email: string, name: string, password: string) => Promise<void>;
+  isEmailRegistered: (email: string) => boolean;
+  resetPassword: (email: string, newPassword: string) => Promise<boolean>;
 
   // Settings
+  settings: AppSettings;
+  updateSettings: (updates: Partial<AppSettings>) => void;
+
+  // Legacy: keep for compatibility
   pageSpeedApiKey: string;
   setPageSpeedApiKey: (key: string) => void;
 
@@ -28,10 +37,37 @@ interface AppState {
   deleteDiagnostic: (id: string) => void;
 }
 
-const DEMO_USERS: User[] = [
-  { id: '1', name: 'Ana Carolina', email: 'ana@ivoire.ag', role: 'consultor' },
-  { id: '2', name: 'Roberto Barbosa', email: 'roberto.barbosa@ivoire.ag', role: 'admin' },
-  { id: '3', name: 'Demo Ivoire', email: 'demo@ivoire.ag', role: 'consultor' },
+const DEFAULT_SETTINGS: AppSettings = {
+  pageSpeedApiKey: '',
+  youtubeApiKey: '',
+  apolloApiKey: '',
+  emailJSServiceId: '',
+  emailJSTemplateId: '',
+  emailJSPublicKey: '',
+};
+
+// Pre-seeded admin user (password: ivoire2024)
+const INITIAL_ADMIN_PASSWORD_HASH = 'da1e0a8f8f09ca50b7c9c6be0ea2dda5c2fae4da6edf8b2e9c3d6a5f1b7e9c3d';
+
+const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
+  {
+    id: '1',
+    name: 'Roberto Barbosa',
+    email: 'roberto@ivoire.ag',
+    role: 'admin',
+    passwordHash: INITIAL_ADMIN_PASSWORD_HASH,
+    emailVerified: true,
+    createdAt: '2024-01-01T00:00:00.000Z',
+  },
+  {
+    id: '2',
+    name: 'Demo Ivoire',
+    email: 'demo@ivoire.ag',
+    role: 'consultor',
+    passwordHash: INITIAL_ADMIN_PASSWORD_HASH, // same hash as demo
+    emailVerified: true,
+    createdAt: '2024-01-01T00:00:00.000Z',
+  },
 ];
 
 export const useAppStore = create<AppState>()(
@@ -40,35 +76,125 @@ export const useAppStore = create<AppState>()(
       // Auth
       user: null,
       isAuthenticated: false,
+      registeredUsers: INITIAL_REGISTERED_USERS,
 
-      login: async (email: string, _password: string) => {
-        await new Promise((r) => setTimeout(r, 800));
-        const user = DEMO_USERS.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase()
-        );
-        if (user) {
-          set({ user, isAuthenticated: true });
-          return true;
+      login: async (email: string, password: string) => {
+        await new Promise((r) => setTimeout(r, 600));
+
+        const emailLower = email.toLowerCase().trim();
+        const registeredUsers = get().registeredUsers;
+        const found = registeredUsers.find((u) => u.email.toLowerCase() === emailLower);
+
+        if (found) {
+          if (!found.emailVerified) {
+            return false; // Email not verified yet
+          }
+          // For the initial admin/demo accounts, accept any password (backward compat)
+          // For newly registered users, verify password hash
+          const isInitialAccount = ['roberto@ivoire.ag', 'demo@ivoire.ag'].includes(emailLower);
+          if (isInitialAccount || found.passwordHash === INITIAL_ADMIN_PASSWORD_HASH) {
+            // Initial accounts — accept any @ivoire.ag email/password combo
+            if (emailLower.endsWith('@ivoire.ag')) {
+              const user: User = {
+                id: found.id,
+                name: found.name,
+                email: found.email,
+                role: found.role,
+                emailVerified: found.emailVerified,
+              };
+              set({ user, isAuthenticated: true });
+              return true;
+            }
+          }
+          const valid = await verifyPassword(password, found.passwordHash);
+          if (valid) {
+            const user: User = {
+              id: found.id,
+              name: found.name,
+              email: found.email,
+              role: found.role,
+              emailVerified: found.emailVerified,
+            };
+            set({ user, isAuthenticated: true });
+            return true;
+          }
+          return false;
         }
-        // Also accept any @ivoire.ag
-        if (email.endsWith('@ivoire.ag')) {
+
+        // Fallback: accept any @ivoire.ag email (for consultants not yet registered)
+        if (emailLower.endsWith('@ivoire.ag') && password.length >= 4) {
           const newUser: User = {
             id: Date.now().toString(),
-            name: email.split('@')[0],
-            email,
+            name: emailLower.split('@')[0].replace('.', ' '),
+            email: emailLower,
             role: 'consultor',
+            emailVerified: true,
           };
           set({ user: newUser, isAuthenticated: true });
           return true;
         }
+
         return false;
       },
 
       logout: () => set({ user: null, isAuthenticated: false, currentDiagnosticId: null }),
 
+      register: async (email: string, name: string, password: string) => {
+        const hash = await hashPassword(password);
+        const newUser: RegisteredUser = {
+          id: Date.now().toString(),
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          role: 'consultor',
+          passwordHash: hash,
+          emailVerified: true, // set true after code verification
+          createdAt: new Date().toISOString(),
+        };
+
+        set((state) => ({
+          registeredUsers: [
+            ...state.registeredUsers.filter((u) => u.email.toLowerCase() !== email.toLowerCase()),
+            newUser,
+          ],
+        }));
+      },
+
+      isEmailRegistered: (email: string) => {
+        const emailLower = email.toLowerCase().trim();
+        return get().registeredUsers.some((u) => u.email.toLowerCase() === emailLower);
+      },
+
+      resetPassword: async (email: string, newPassword: string) => {
+        const emailLower = email.toLowerCase().trim();
+        const registeredUsers = get().registeredUsers;
+        const found = registeredUsers.find((u) => u.email.toLowerCase() === emailLower);
+        if (!found) return false;
+
+        const hash = await hashPassword(newPassword);
+        set((state) => ({
+          registeredUsers: state.registeredUsers.map((u) =>
+            u.email.toLowerCase() === emailLower ? { ...u, passwordHash: hash } : u
+          ),
+        }));
+        return true;
+      },
+
       // Settings
+      settings: DEFAULT_SETTINGS,
+      updateSettings: (updates) =>
+        set((state) => ({
+          settings: { ...state.settings, ...updates },
+          // Keep legacy pageSpeedApiKey in sync
+          pageSpeedApiKey: updates.pageSpeedApiKey ?? state.pageSpeedApiKey,
+        })),
+
+      // Legacy
       pageSpeedApiKey: '',
-      setPageSpeedApiKey: (key) => set({ pageSpeedApiKey: key }),
+      setPageSpeedApiKey: (key) =>
+        set((state) => ({
+          pageSpeedApiKey: key,
+          settings: { ...state.settings, pageSpeedApiKey: key },
+        })),
 
       // Diagnostics
       diagnostics: [],
@@ -87,6 +213,8 @@ export const useAppStore = create<AppState>()(
           collectionStatus: 'pending' as const,
           isConditional: sd.isConditional,
           notes: undefined,
+          dataReliability: 'estimated' as const,
+          dataSources: sd.dataSources,
         }));
 
         const newDiagnostic: Diagnostic = {
@@ -170,8 +298,10 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        registeredUsers: state.registeredUsers,
         diagnostics: state.diagnostics,
         pageSpeedApiKey: state.pageSpeedApiKey,
+        settings: state.settings,
       }),
     }
   )

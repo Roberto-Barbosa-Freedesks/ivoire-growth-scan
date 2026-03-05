@@ -10,9 +10,10 @@ import DimensionPage from './DimensionPage';
 import InsightsPage from './InsightsPage';
 import RecommendationsPage from './RecommendationsPage';
 import CompetitorPage from './CompetitorPage';
+import SummaryPage from './SummaryPage';
 import type { DimensionKey } from '../../types';
 
-type TabKey = 'overview' | 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE' | 'insights' | 'recommendations' | 'competitors';
+type TabKey = 'overview' | 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE' | 'competitors' | 'insights' | 'recommendations' | 'summary';
 
 interface Tab {
   key: TabKey;
@@ -25,9 +26,10 @@ const TABS: Tab[] = [
   { key: 'CANAIS', label: 'Canais' },
   { key: 'CONVERSAO', label: 'Conversão' },
   { key: 'CONTROLE', label: 'Controle' },
+  { key: 'competitors', label: 'Concorrentes' },
   { key: 'insights', label: 'Insights' },
   { key: 'recommendations', label: 'Recomendações' },
-  { key: 'competitors', label: 'Concorrentes' },
+  { key: 'summary', label: 'Resumo' },
 ];
 
 const DIMENSION_TABS: TabKey[] = ['CONTEUDO', 'CANAIS', 'CONVERSAO', 'CONTROLE'];
@@ -106,6 +108,7 @@ export default function ResultsLayout() {
     if (activeTab === 'insights') return <InsightsPage diagnostic={diagnostic!} />;
     if (activeTab === 'recommendations') return <RecommendationsPage diagnostic={diagnostic!} />;
     if (activeTab === 'competitors') return <CompetitorPage diagnostic={diagnostic!} />;
+    if (activeTab === 'summary') return <SummaryPage diagnostic={diagnostic!} />;
     return null;
   }
 
@@ -132,19 +135,38 @@ export default function ResultsLayout() {
         >
           {/* Company info + score */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <div>
-              <div className="ivoire-tag" style={{ marginBottom: 8 }}>
-                Diagnóstico Concluído
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Client logo */}
+              {diagnostic.input.clientLogoUrl && (
+                <div style={{
+                  width: 52, height: 52, borderRadius: 8,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden', flexShrink: 0,
+                }}>
+                  <img
+                    src={diagnostic.input.clientLogoUrl}
+                    alt={diagnostic.input.companyName}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+              <div>
+                <div className="ivoire-tag" style={{ marginBottom: 8 }}>
+                  Diagnóstico Concluído
+                </div>
+                <h1
+                  className="font-montserrat"
+                  style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0 }}
+                >
+                  {diagnostic.input.companyName}
+                </h1>
+                <p style={{ color: '#888', fontSize: 12, margin: '4px 0 0', fontFamily: 'Arvo, serif' }}>
+                  {diagnostic.input.siteUrl} · {diagnostic.input.segment}
+                </p>
               </div>
-              <h1
-                className="font-montserrat"
-                style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0 }}
-              >
-                {diagnostic.input.companyName}
-              </h1>
-              <p style={{ color: '#666', fontSize: 12, margin: '4px 0 0', fontFamily: 'Arvo, serif' }}>
-                {diagnostic.input.siteUrl} · {diagnostic.input.segment}
-              </p>
             </div>
 
             <div

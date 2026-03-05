@@ -311,7 +311,7 @@ function Step1({
                 top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'none',
-                color: '#595959',
+                color: '#aaa',
               }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -343,7 +343,7 @@ function Step1({
                 top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'none',
-                color: '#595959',
+                color: '#aaa',
               }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

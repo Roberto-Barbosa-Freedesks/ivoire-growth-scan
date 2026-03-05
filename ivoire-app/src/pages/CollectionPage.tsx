@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/store';
 import { SUBDIMENSIONS, DIMENSION_CONFIG } from '../data/scorecard';
 import { fetchPageSpeedWithTech, scorePerformanceWeb, simulateCollection } from '../services/pagespeed';
+import { fetchClientLogo } from '../services/logo';
 import type { TechDetectionResult } from '../services/pagespeed';
 import { scoreToLevel } from '../services/scoring';
 import type { DimensionKey, CollectionStatus, SubdimensionScore } from '../types';
@@ -13,83 +14,44 @@ interface SubdimState {
   id: string;
   status: CollectionStatus;
   preview?: string;
+  reliability?: 'real' | 'estimated';
 }
 
 function StatusIcon({ status }: { status: CollectionStatus }) {
   if (status === 'completed') {
     return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 22,
-          height: 22,
-          borderRadius: '50%',
-          background: 'rgba(0, 204, 102, 0.15)',
-          border: '1px solid #00cc66',
-          color: '#00cc66',
-          fontSize: 13,
-          flexShrink: 0,
-        }}
-      >
-        ✓
-      </span>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 22, height: 22, borderRadius: '50%',
+        background: 'rgba(0, 204, 102, 0.15)', border: '1px solid #00cc66',
+        color: '#00cc66', fontSize: 13, flexShrink: 0,
+      }}>✓</span>
     );
   }
   if (status === 'error') {
     return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 22,
-          height: 22,
-          borderRadius: '50%',
-          background: 'rgba(255, 77, 77, 0.15)',
-          border: '1px solid #ff4d4d',
-          color: '#ff4d4d',
-          fontSize: 13,
-          flexShrink: 0,
-        }}
-      >
-        ✗
-      </span>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 22, height: 22, borderRadius: '50%',
+        background: 'rgba(255, 77, 77, 0.15)', border: '1px solid #ff4d4d',
+        color: '#ff4d4d', fontSize: 13, flexShrink: 0,
+      }}>✗</span>
     );
   }
   if (status === 'collecting') {
     return (
-      <span
-        className="spin"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 22,
-          height: 22,
-          borderRadius: '50%',
-          border: '2px solid rgba(255,255,2,0.3)',
-          borderTopColor: '#FFFF02',
-          flexShrink: 0,
-        }}
-      />
+      <span className="spin" style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 22, height: 22, borderRadius: '50%',
+        border: '2px solid rgba(255,255,2,0.3)', borderTopColor: '#FFFF02', flexShrink: 0,
+      }} />
     );
   }
-  // pending or manual
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 22,
-        height: 22,
-        borderRadius: '50%',
-        border: '1px solid rgba(255,255,255,0.2)',
-        flexShrink: 0,
-      }}
-    />
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 22, height: 22, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0,
+    }} />
   );
 }
 
@@ -98,7 +60,7 @@ function getSourceLabel(subdimId: string): string {
   if (!subdim) return 'API';
   const map: Record<string, string> = {
     automatizado: 'PageSpeed API',
-    'semi-automatizado': 'Análise Simulada',
+    'semi-automatizado': 'Coleta Automatizada',
     manual: 'Entrada Manual',
   };
   return map[subdim.collectionType] || 'API';
@@ -107,21 +69,20 @@ function getSourceLabel(subdimId: string): string {
 export default function CollectionPage() {
   const { id: diagnosticId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getDiagnostic, updateSubdimensionScore, updateCollectionProgress, finalizeDiagnosticById, pageSpeedApiKey } =
+  const { getDiagnostic, updateSubdimensionScore, updateCollectionProgress, finalizeDiagnosticById, updateDiagnostic, settings } =
     useAppStore();
 
   const diagnostic = diagnosticId ? getDiagnostic(diagnosticId) : undefined;
 
   const [subdimStates, setSubdimStates] = useState<Record<string, SubdimState>>(() => {
     const initial: Record<string, SubdimState> = {};
-    SUBDIMENSIONS.forEach((sd) => {
-      initial[sd.id] = { id: sd.id, status: 'pending' };
-    });
+    SUBDIMENSIONS.forEach((sd) => { initial[sd.id] = { id: sd.id, status: 'pending' }; });
     return initial;
   });
 
   const [completedCount, setCompletedCount] = useState(0);
   const [isFinalized, setIsFinalized] = useState(false);
+  const [logoFetched, setLogoFetched] = useState(false);
   const hasStarted = useRef(false);
   const realTechRef = useRef<TechDetectionResult | undefined>(undefined);
 
@@ -140,12 +101,21 @@ export default function CollectionPage() {
     const siteUrl = diagnostic.input.siteUrl;
 
     async function runCollection() {
+      // Step 0: Fetch client logo
+      try {
+        const logoUrl = await fetchClientLogo(siteUrl);
+        if (logoUrl) {
+          updateDiagnostic(diagnosticId!, {
+            input: { ...diagnostic!.input, clientLogoUrl: logoUrl },
+          });
+          setLogoFetched(true);
+        }
+      } catch {
+        // Logo fetch is non-critical
+      }
+
       for (const subdim of relevantSubdims) {
-        // Update status to collecting
-        setSubdimStates((prev) => ({
-          ...prev,
-          [subdim.id]: { ...prev[subdim.id], status: 'collecting' },
-        }));
+        setSubdimStates((prev) => ({ ...prev, [subdim.id]: { ...prev[subdim.id], status: 'collecting' } }));
         updateCollectionProgress(diagnosticId!, subdim.id, 'collecting');
 
         try {
@@ -153,45 +123,52 @@ export default function CollectionPage() {
           let rawData: Record<string, unknown> = {};
           let source: 'auto' | 'manual' | 'insufficient' = 'auto';
           let preview = '';
+          let dataReliability: 'real' | 'estimated' = 'estimated';
+          let dataSources: string[] = [];
 
           if (subdim.id === 'performance_web') {
             try {
-              const { mobile, desktop, tech } = await fetchPageSpeedWithTech(siteUrl, pageSpeedApiKey || undefined);
+              const { mobile, desktop, tech } = await fetchPageSpeedWithTech(siteUrl, settings.pageSpeedApiKey || undefined);
               realTechRef.current = tech;
               score = scorePerformanceWeb(mobile, desktop);
               rawData = { mobile, desktop, tech };
               source = 'auto';
+              dataReliability = 'real';
+              dataSources = ['Google PageSpeed Insights API'];
               preview = `Mobile: ${mobile.mobileScore}/100 · LCP: ${mobile.lcp.toFixed(1)}s · GTM: ${tech.gtmInstalled ? 'Sim' : 'Não'} · GA4: ${tech.ga4Installed ? 'Sim' : 'Não'}`;
             } catch {
-              // Fallback to simulation if PageSpeed API fails
               const result = await simulateCollection(subdim.id, siteUrl);
               score = result.score;
-              rawData = result.data;
+              rawData = { ...result.data, dataSource: 'PageSpeed API indisponível — dados estimados' };
               source = result.source;
-              preview = `Score simulado: ${score}/4 (API indisponível)`;
+              dataReliability = 'estimated';
+              dataSources = ['Estimado (API indisponível)'];
+              preview = `Score estimado: ${score}/4`;
             }
           } else {
-            const result = await simulateCollection(subdim.id, siteUrl, realTechRef.current);
+            const result = await simulateCollection(subdim.id, siteUrl, realTechRef.current, {
+              youtubeUrl: diagnostic!.input.youtube || undefined,
+              youtubeApiKey: settings.youtubeApiKey || undefined,
+            });
             score = result.score;
             rawData = result.data;
             source = result.source;
+            dataReliability = result.dataReliability;
+            dataSources = result.dataSources;
 
-            // Build preview from data
-            const dataEntries = Object.entries(result.data).slice(0, 2);
-            preview = dataEntries
+            // Build preview
+            const previewEntries = Object.entries(result.data)
+              .filter(([k]) => !['dataSource', 'note'].includes(k))
+              .slice(0, 2);
+            preview = previewEntries
               .map(([k, v]) => {
                 const valStr =
-                  typeof v === 'boolean'
-                    ? v
-                      ? 'Sim'
-                      : 'Não'
-                    : Array.isArray(v)
-                    ? v.filter(Boolean).join(', ') || 'N/A'
-                    : typeof v === 'number'
-                    ? String(Math.round(v as number))
-                    : String(v);
-                const keyLabel = k.replace(/_/g, ' ');
-                return `${keyLabel}: ${valStr}`;
+                  typeof v === 'boolean' ? (v ? 'Sim' : 'Não') :
+                  Array.isArray(v) ? v.filter(Boolean).join(', ') || 'N/A' :
+                  typeof v === 'number' ? String(Math.round(v as number)) :
+                  v === null ? 'N/D' :
+                  String(v);
+                return `${k.replace(/_/g, ' ')}: ${valStr}`;
               })
               .join(' · ');
           }
@@ -209,6 +186,8 @@ export default function CollectionPage() {
             rawData,
             collectionStatus: 'completed',
             isConditional: subdim.isConditional,
+            dataReliability,
+            dataSources,
           };
 
           updateSubdimensionScore(diagnosticId!, subdimScore);
@@ -216,7 +195,7 @@ export default function CollectionPage() {
 
           setSubdimStates((prev) => ({
             ...prev,
-            [subdim.id]: { id: subdim.id, status: 'completed', preview },
+            [subdim.id]: { id: subdim.id, status: 'completed', preview, reliability: dataReliability },
           }));
           setCompletedCount((c) => c + 1);
         } catch {
@@ -229,7 +208,6 @@ export default function CollectionPage() {
         }
       }
 
-      // All done — finalize
       finalizeDiagnosticById(diagnosticId!);
       setIsFinalized(true);
     }
@@ -256,70 +234,56 @@ export default function CollectionPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#282828',
-        padding: '48px 48px 80px',
-        maxWidth: 860,
-        margin: '0 auto',
-      }}
-    >
+    <div style={{ minHeight: '100vh', background: '#282828', padding: '48px 48px 80px', maxWidth: 860, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ marginBottom: 40 }}>
-        <div className="ivoire-tag" style={{ marginBottom: 16 }}>
-          Coleta em Andamento
-        </div>
-        <h1
-          className="font-bebas"
-          style={{ fontSize: 42, color: '#fff', margin: 0, letterSpacing: 2 }}
-        >
+        <div className="ivoire-tag" style={{ marginBottom: 16 }}>Coleta em Andamento</div>
+        <h1 className="font-bebas" style={{ fontSize: 42, color: '#fff', margin: 0, letterSpacing: 2 }}>
           Analisando{' '}
           <span style={{ color: '#FFFF02' }}>{diagnostic.input.companyName}</span>
         </h1>
-        <p style={{ color: '#999', marginTop: 8, fontSize: 14 }}>
-          {diagnostic.input.siteUrl}
+        <p style={{ color: '#999', marginTop: 8, fontSize: 14 }}>{diagnostic.input.siteUrl}</p>
+      </div>
+
+      {/* Logo fetch status */}
+      {logoFetched && (
+        <div style={{ marginBottom: 16, padding: '8px 14px', background: 'rgba(0,204,102,0.06)', border: '1px solid rgba(0,204,102,0.15)', borderRadius: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#00cc66', fontSize: 13 }}>✓</span>
+          <span style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif' }}>Logo oficial extraído via Clearbit</span>
+        </div>
+      )}
+
+      {/* Data reliability notice */}
+      <div style={{ marginBottom: 24, padding: '12px 16px', background: 'rgba(255,255,2,0.04)', border: '1px solid rgba(255,255,2,0.1)', borderRadius: 6 }}>
+        <div className="font-montserrat" style={{ fontSize: 9, color: '#FFFF02', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+          Fontes de Dados
+        </div>
+        <p style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.6 }}>
+          <strong style={{ color: '#ccc' }}>Performance & Tracking:</strong> Dados reais via Google PageSpeed Insights API
+          {settings.youtubeApiKey && <span> · <strong style={{ color: '#ccc' }}>YouTube:</strong> Dados reais via YouTube Data API v3</span>}
+          <br />
+          <strong style={{ color: '#ccc' }}>Demais subdimensões:</strong> Estimativas baseadas em algoritmos determinísticos.{' '}
+          Configure <strong style={{ color: '#FFFF02' }}>SimilarWeb, Semrush e outras APIs</strong> nas configurações para dados reais.
         </p>
       </div>
 
       {/* Overall progress */}
-      <div
-        className="ivoire-card"
-        style={{ padding: '24px 28px', marginBottom: 40 }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 14,
-          }}
-        >
-          <span
-            className="font-montserrat"
-            style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: 0.5 }}
-          >
+      <div className="ivoire-card" style={{ padding: '24px 28px', marginBottom: 40 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <span className="font-montserrat" style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: 0.5 }}>
             Progresso Geral
           </span>
-          <span
-            className="font-bebas"
-            style={{ fontSize: 28, color: '#FFFF02', letterSpacing: 1 }}
-          >
+          <span className="font-bebas" style={{ fontSize: 28, color: '#FFFF02', letterSpacing: 1 }}>
             {progressPct}%
           </span>
         </div>
         <div className="progress-bar" style={{ height: 6 }}>
-          <div
-            className="progress-bar-fill"
-            style={{ width: `${progressPct}%`, height: '100%' }}
-          />
+          <div className="progress-bar-fill" style={{ width: `${progressPct}%`, height: '100%' }} />
         </div>
         <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>
           {completedCount} de {totalCount} subdimensões coletadas
           {isFinalized && (
-            <span style={{ color: '#00cc66', marginLeft: 12 }}>
-              ✓ Análise concluída — redirecionando...
-            </span>
+            <span style={{ color: '#00cc66', marginLeft: 12 }}>✓ Análise concluída — redirecionando…</span>
           )}
         </p>
       </div>
@@ -333,40 +297,21 @@ export default function CollectionPage() {
 
         return (
           <div key={dimKey} style={{ marginBottom: 32 }}>
-            {/* Dimension header */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <h2
-                className="font-montserrat"
-                style={{ fontSize: 13, fontWeight: 700, color: dimConfig.color, letterSpacing: 2, margin: 0, textTransform: 'uppercase' }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <h2 className="font-montserrat" style={{ fontSize: 13, fontWeight: 700, color: dimConfig.color, letterSpacing: 2, margin: 0, textTransform: 'uppercase' }}>
                 {dimConfig.label}
               </h2>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: '#666',
-                  fontFamily: 'Montserrat, sans-serif',
-                }}
-              >
-                {dimCompleted}/{dimSubdims.length}
-              </span>
+              <span style={{ fontSize: 11, color: '#666', fontFamily: 'Montserrat, sans-serif' }}>{dimCompleted}/{dimSubdims.length}</span>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
             </div>
 
-            {/* Subdimension rows */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dimSubdims.map((sd) => {
                 const state = subdimStates[sd.id];
                 const status = state?.status || 'pending';
                 const isActive = status === 'collecting';
                 const isDone = status === 'completed';
+                const isReal = state?.reliability === 'real';
 
                 return (
                   <div
@@ -374,161 +319,56 @@ export default function CollectionPage() {
                     className="ivoire-card"
                     style={{
                       padding: '14px 18px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
+                      display: 'flex', alignItems: 'center', gap: 14,
                       borderColor: isActive
                         ? 'rgba(255,255,2,0.35)'
-                        : isDone
-                        ? 'rgba(0,204,102,0.2)'
-                        : 'rgba(255,255,255,0.06)',
+                        : isDone ? 'rgba(0,204,102,0.2)' : 'rgba(255,255,255,0.06)',
                       transition: 'border-color 0.3s ease',
                     }}
                   >
                     <StatusIcon status={status} />
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <span
-                          className="font-montserrat"
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: isActive ? '#FFFF02' : isDone ? '#fff' : '#888',
-                          }}
-                        >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <span className="font-montserrat" style={{ fontSize: 13, fontWeight: 600, color: isActive ? '#FFFF02' : isDone ? '#fff' : '#888' }}>
                           {sd.name}
                         </span>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: '#555',
-                            fontFamily: 'Montserrat, sans-serif',
-                            fontWeight: 500,
-                            letterSpacing: 0.5,
-                            textTransform: 'uppercase',
-                          }}
-                        >
+                        <span style={{ fontSize: 10, color: '#555', fontFamily: 'Montserrat, sans-serif', fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}>
                           {getSourceLabel(sd.id)}
                         </span>
+                        {isDone && isReal && (
+                          <span style={{ fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#00cc66', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 2, padding: '1px 5px', letterSpacing: 0.5 }}>
+                            REAL
+                          </span>
+                        )}
+                        {isDone && !isReal && (
+                          <span style={{ fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#777', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, padding: '1px 5px', letterSpacing: 0.5 }}>
+                            ESTIMADO
+                          </span>
+                        )}
                         {sd.isConditional && (
-                          <span
-                            style={{
-                              fontSize: 9,
-                              color: '#FFFF02',
-                              border: '1px solid rgba(255,255,2,0.3)',
-                              borderRadius: 2,
-                              padding: '1px 5px',
-                              fontFamily: 'Montserrat, sans-serif',
-                              letterSpacing: 0.5,
-                              textTransform: 'uppercase',
-                              fontWeight: 700,
-                            }}
-                          >
+                          <span style={{ fontSize: 9, color: '#FFFF02', border: '1px solid rgba(255,255,2,0.3)', borderRadius: 2, padding: '1px 5px', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase', fontWeight: 700 }}>
                             E-COMM
                           </span>
                         )}
                       </div>
 
                       {state?.preview && isDone && (
-                        <p
-                          style={{
-                            fontSize: 11,
-                            color: '#666',
-                            margin: '4px 0 0',
-                            fontFamily: 'Arvo, serif',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
+                        <p style={{ fontSize: 11, color: '#777', margin: '4px 0 0', fontFamily: 'Arvo, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {state.preview}
                         </p>
                       )}
-
                       {isActive && (
-                        <p
-                          className="pulse-yellow"
-                          style={{
-                            fontSize: 11,
-                            color: '#FFFF02',
-                            margin: '4px 0 0',
-                            fontFamily: 'Montserrat, sans-serif',
-                          }}
-                        >
-                          Coletando dados...
+                        <p className="pulse-yellow" style={{ fontSize: 11, color: '#FFFF02', margin: '4px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+                          Coletando dados…
                         </p>
                       )}
                     </div>
 
-                    {/* Status badge */}
-                    {status === 'completed' && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: '#00cc66',
-                          fontFamily: 'Montserrat, sans-serif',
-                          fontWeight: 700,
-                          letterSpacing: 0.5,
-                          textTransform: 'uppercase',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Concluído
-                      </span>
-                    )}
-                    {status === 'error' && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: '#ff4d4d',
-                          fontFamily: 'Montserrat, sans-serif',
-                          fontWeight: 700,
-                          letterSpacing: 0.5,
-                          textTransform: 'uppercase',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Erro
-                      </span>
-                    )}
-                    {status === 'pending' && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: '#444',
-                          fontFamily: 'Montserrat, sans-serif',
-                          fontWeight: 600,
-                          letterSpacing: 0.5,
-                          textTransform: 'uppercase',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Aguardando
-                      </span>
-                    )}
-                    {status === 'collecting' && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: '#FFFF02',
-                          fontFamily: 'Montserrat, sans-serif',
-                          fontWeight: 700,
-                          letterSpacing: 0.5,
-                          textTransform: 'uppercase',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Coletando
-                      </span>
-                    )}
+                    {status === 'completed' && <span style={{ fontSize: 10, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Concluído</span>}
+                    {status === 'error' && <span style={{ fontSize: 10, color: '#ff4d4d', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Erro</span>}
+                    {status === 'pending' && <span style={{ fontSize: 10, color: '#555', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Aguardando</span>}
+                    {status === 'collecting' && <span style={{ fontSize: 10, color: '#FFFF02', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Coletando</span>}
                   </div>
                 );
               })}
@@ -537,7 +377,6 @@ export default function CollectionPage() {
         );
       })}
 
-      {/* Footer note */}
       <div style={{ marginTop: 40, textAlign: 'center' }}>
         <p style={{ color: '#444', fontSize: 12, fontFamily: 'Montserrat, sans-serif' }}>
           Não feche esta janela durante a coleta

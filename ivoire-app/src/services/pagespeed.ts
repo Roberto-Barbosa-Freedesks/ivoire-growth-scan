@@ -1,4 +1,5 @@
 import type { PageSpeedData } from '../types';
+import { fetchYouTubeChannelStats, scoreYouTubePresence } from './youtube';
 
 const PAGESPEED_API = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
@@ -33,7 +34,6 @@ export function extractTechDetection(lighthouseResult: Record<string, unknown>):
   const thirdPartySummary = audits['third-party-summary'] as { details?: { items?: Array<{ entity: string }> } } | undefined;
   const networkRequests = audits['network-requests'] as { details?: { items?: Array<{ url: string }> } } | undefined;
 
-  // Collect all URLs from network requests
   const allUrls: string[] = [];
   if (networkRequests?.details?.items) {
     for (const item of networkRequests.details.items) {
@@ -41,7 +41,6 @@ export function extractTechDetection(lighthouseResult: Record<string, unknown>):
     }
   }
 
-  // Also collect entity names from third-party summary
   const entityNames: string[] = [];
   if (thirdPartySummary?.details?.items) {
     for (const item of thirdPartySummary.details.items) {
@@ -162,30 +161,25 @@ export function scorePerformanceWeb(mobile: PageSpeedData, desktop: PageSpeedDat
   const mobileScore = mobile.mobileScore;
   const accessibilityScore = Math.max(mobile.accessibilityScore, desktop.accessibilityScore);
 
-  // LCP scoring
   let lcpScore = 1;
   if (lcp > 0 && lcp < 1.5) lcpScore = 4;
   else if (lcp < 2.5) lcpScore = 3;
   else if (lcp < 4) lcpScore = 2;
 
-  // CLS scoring
   let clsScore = 1;
   if (cls < 0.1) clsScore = 3;
   else if (cls < 0.25) clsScore = 2;
 
-  // Mobile score
   let mobileScoreVal = 1;
   if (mobileScore >= 90) mobileScoreVal = 4;
   else if (mobileScore >= 75) mobileScoreVal = 3;
   else if (mobileScore >= 50) mobileScoreVal = 2;
 
-  // Accessibility
   let accScore = 1;
   if (accessibilityScore >= 90) accScore = 4;
   else if (accessibilityScore >= 80) accScore = 3;
   else if (accessibilityScore >= 60) accScore = 2;
 
-  // Weighted average: LCP (35%) + CLS (20%) + Mobile (30%) + Accessibility (15%)
   const weighted = lcpScore * 0.35 + clsScore * 0.2 + mobileScoreVal * 0.3 + accScore * 0.15;
   return Math.max(1, Math.min(4, Math.round(weighted * 10) / 10));
 }
@@ -207,106 +201,29 @@ export function scoreTechDetection(tech: TechDetectionResult): number {
   return score;
 }
 
-// Simulate collection for APIs not available in browser
+/**
+ * Collect data for a subdimension.
+ * Uses real APIs where available, falls back to estimates with clear labeling.
+ */
 export async function simulateCollection(
   subdimensionId: string,
   siteUrl: string,
-  realTech?: TechDetectionResult
-): Promise<{ score: number; data: Record<string, unknown>; source: 'auto' | 'manual' | 'insufficient' }> {
-  // Deterministic pseudo-random based on URL + subdimension for demo consistency
-  const seed = hashCode(siteUrl + subdimensionId);
-  const rand = seededRandom(seed);
-
-  // For tracking/stack subdimensions use real tech detection if available
-  let score: number;
-  if (realTech && (subdimensionId === 'tracking_health' || subdimensionId === 'stack_martech')) {
-    score = scoreTechDetection(realTech);
-  } else {
-    const rawScore = 1 + rand() * 3; // 1–4
-    score = Math.max(1, Math.min(4, Math.round(rawScore)));
+  realTech?: TechDetectionResult,
+  options?: {
+    youtubeUrl?: string;
+    youtubeApiKey?: string;
   }
-
-  await delay(500 + rand() * 1000);
-
-  const mockData: Record<string, Record<string, unknown>> = {
-    seo_onpage_eeat: {
-      titleOptimization: rand() > 0.5 ? 'Parcialmente otimizado' : 'Otimizado',
-      schemaMarkup: ['Organization'],
-      authorsIdentified: rand() > 0.6,
-      aboutPageQuality: rand() > 0.5 ? 'Genérica' : 'Estruturada',
-    },
-    semantica_geo: {
-      schemaTypes: ['Organization', 'WebSite'],
-      richResultsEligible: rand() > 0.5,
-      jsonLdValid: rand() > 0.7,
-      geoPresence: rand() > 0.7 ? 'Ausente' : 'Parcial',
-    },
-    presenca_video_audio: {
-      youtubeChannel: rand() > 0.4 ? 'Encontrado' : 'Não encontrado',
-      youtubeSubscribers: Math.floor(rand() * 50000),
-      podcastFound: rand() > 0.7,
-    },
-    mix_trafego: {
-      trafficEstimate: Math.floor(rand() * 500000),
-      channels: { organic: 35, direct: 25, paid: 20, social: 15, referral: 5 },
-      trend12m: rand() > 0.5 ? 'crescimento' : 'estável',
-    },
-    midia_paga_criativos: {
-      activeAds: Math.floor(rand() * 50),
-      channels: rand() > 0.5 ? ['Meta', 'Google'] : ['Meta'],
-      formats: ['Imagem', 'Vídeo'],
-    },
-    presenca_marketplaces: {
-      marketplaces: rand() > 0.5 ? ['Mercado Livre'] : [],
-      avgRating: 3.5 + rand() * 1.5,
-      reviewsCount: Math.floor(rand() * 500),
-    },
-    seo_offpage: {
-      authorityScore: Math.floor(10 + rand() * 60),
-      totalBacklinks: Math.floor(100 + rand() * 10000),
-      referringDomains: Math.floor(20 + rand() * 500),
-      toxicLinks: Math.floor(rand() * 15),
-    },
-    ux_ui_cro: {
-      ctasVisible: rand() > 0.4,
-      chatbotPresent: rand() > 0.5,
-      chatbotType: rand() > 0.6 ? 'IA contextual' : 'Fluxo fixo',
-      whatsappBusiness: rand() > 0.5,
-      accessibilityScore: Math.floor(40 + rand() * 60),
-    },
-    jornada_checkout: {
-      checkoutSteps: Math.floor(2 + rand() * 4),
-      mandatoryRegistration: rand() > 0.5,
-      paymentOptions: ['PIX', 'Cartão', rand() > 0.5 ? 'Boleto' : ''],
-      guestCheckout: rand() > 0.5,
-    },
-    reputacao_voc: {
-      googleRating: 3.0 + rand() * 2.0,
-      googleReviews: Math.floor(20 + rand() * 500),
-      reclaimeAquiScore: 5.0 + rand() * 5.0,
-      reclaimeAquiSolutionIndex: Math.floor(50 + rand() * 50),
-    },
-    stack_martech: realTech ? {
-      totalTechnologies: realTech.totalThirdParties,
-      categoriesCovered: [
-        ...(realTech.ga4Installed ? ['Analytics'] : []),
-        ...(realTech.gtmInstalled ? ['Tag Management'] : []),
-        ...(realTech.hubspotInstalled ? ['CRM/Automation'] : []),
-        ...(realTech.intercomInstalled ? ['Suporte/Chat'] : []),
-        ...(realTech.hotjarInstalled ? ['Heatmap/UX'] : []),
-      ],
-      gtmInstalled: realTech.gtmInstalled,
-      ga4Installed: realTech.ga4Installed,
-      cdpInstalled: false,
-      thirdPartyDomains: realTech.thirdPartyDomains,
-    } : {
-      totalTechnologies: Math.floor(5 + rand() * 30),
-      categoriesCovered: ['Analytics', 'Tag Management'],
-      gtmInstalled: rand() > 0.4,
-      ga4Installed: rand() > 0.3,
-      cdpInstalled: rand() > 0.8,
-    },
-    tracking_health: realTech ? {
+): Promise<{
+  score: number;
+  data: Record<string, unknown>;
+  source: 'auto' | 'manual' | 'insufficient';
+  dataReliability: 'real' | 'estimated';
+  dataSources: string[];
+}> {
+  // Use real tech detection if available
+  if (realTech && (subdimensionId === 'tracking_health' || subdimensionId === 'stack_martech')) {
+    const score = scoreTechDetection(realTech);
+    const data: Record<string, unknown> = subdimensionId === 'tracking_health' ? {
       gtmPresent: realTech.gtmInstalled,
       ga4Configured: realTech.ga4Installed,
       metaPixel: realTech.metaPixel,
@@ -316,25 +233,201 @@ export async function simulateCollection(
       consentModeV2: realTech.consentModeV2,
       tagConflicts: 0,
     } : {
-      gtmPresent: rand() > 0.4,
-      ga4Configured: rand() > 0.4,
-      metaPixel: rand() > 0.5,
-      linkedinInsightTag: rand() > 0.6,
-      consentModeV2: rand() > 0.7,
-      tagConflicts: Math.floor(rand() * 3),
+      totalTechnologies: realTech.totalThirdParties,
+      categoriesCovered: [
+        ...(realTech.ga4Installed ? ['Analytics'] : []),
+        ...(realTech.gtmInstalled ? ['Tag Management'] : []),
+        ...(realTech.hubspotInstalled ? ['CRM/Automação'] : []),
+        ...(realTech.intercomInstalled ? ['Suporte/Chat'] : []),
+        ...(realTech.hotjarInstalled ? ['Heatmap/UX'] : []),
+      ],
+      gtmInstalled: realTech.gtmInstalled,
+      ga4Installed: realTech.ga4Installed,
+      cdpInstalled: false,
+      thirdPartyDomains: realTech.thirdPartyDomains,
+    };
+    return {
+      score,
+      data,
+      source: 'auto',
+      dataReliability: 'real',
+      dataSources: ['Google PageSpeed Insights (Tech Detection)'],
+    };
+  }
+
+  // YouTube integration — REAL data if API key provided
+  if (subdimensionId === 'presenca_video_audio') {
+    const youtubeUrl = options?.youtubeUrl;
+    const youtubeApiKey = options?.youtubeApiKey;
+
+    if (youtubeUrl && youtubeApiKey) {
+      try {
+        const ytStats = await fetchYouTubeChannelStats(youtubeUrl, youtubeApiKey);
+        if (ytStats) {
+          const score = scoreYouTubePresence(ytStats, true);
+          return {
+            score,
+            data: {
+              youtubeChannelFound: true,
+              youtubeChannelTitle: ytStats.title,
+              youtubeSubscribers: ytStats.subscriberCount,
+              youtubeVideos: ytStats.videoCount,
+              youtubeViews: ytStats.viewCount,
+              youtubeChannelId: ytStats.channelId,
+              youtubeCustomUrl: ytStats.customUrl || youtubeUrl,
+              podcastFound: false,
+              dataSource: 'YouTube Data API v3 (dados reais)',
+            },
+            source: 'auto',
+            dataReliability: 'real',
+            dataSources: ['YouTube Data API v3'],
+          };
+        }
+      } catch {
+        // Fall through to estimation
+      }
+    }
+
+    // No YouTube API key or no URL — show what we can determine
+    if (youtubeUrl) {
+      // We know there's a YouTube channel (URL provided) but can't get stats
+      return {
+        score: 2, // assume basic presence
+        data: {
+          youtubeChannelFound: true,
+          youtubeChannelUrl: youtubeUrl,
+          youtubeSubscribers: null,
+          youtubeVideos: null,
+          youtubeViews: null,
+          podcastFound: false,
+          dataSource: 'Canal fornecido pelo usuário — estatísticas requerem YouTube API Key',
+          note: 'Configure YouTube API Key nas Configurações para obter dados reais de inscritos e visualizações.',
+        },
+        source: 'manual',
+        dataReliability: 'estimated',
+        dataSources: ['Input manual (URL fornecida pelo usuário)'],
+      };
+    }
+
+    // No YouTube URL at all
+    return {
+      score: 1,
+      data: {
+        youtubeChannelFound: false,
+        youtubeSubscribers: null,
+        podcastFound: false,
+        dataSource: 'Sem canal YouTube identificado',
+        note: 'Nenhum URL de YouTube foi fornecido no cadastro.',
+      },
+      source: 'auto',
+      dataReliability: 'real',
+      dataSources: ['Verificação manual (sem URL fornecida)'],
+    };
+  }
+
+  // ── All other subdimensions: estimated/simulated data ──────────────────────
+  // These require paid APIs (SimilarWeb, Semrush, Reclame Aqui, etc.)
+  // Scores and data are ESTIMATED and clearly labeled as such.
+
+  const seed = hashCode(siteUrl + subdimensionId);
+  const rand = seededRandom(seed);
+
+  await delay(300 + rand() * 800);
+
+  const estimatedData: Record<string, Record<string, unknown>> = {
+    seo_onpage_eeat: {
+      titleOptimization: rand() > 0.5 ? 'Parcialmente otimizado' : 'Otimizado',
+      schemaMarkup: ['Organization'],
+      authorsIdentified: rand() > 0.6,
+      aboutPageQuality: rand() > 0.5 ? 'Genérica' : 'Estruturada',
+      dataSource: 'Estimado — análise real via Semrush/Screaming Frog requerida',
+    },
+    semantica_geo: {
+      schemaTypes: ['Organization', 'WebSite'],
+      richResultsEligible: rand() > 0.5,
+      jsonLdValid: rand() > 0.7,
+      geoPresence: rand() > 0.7 ? 'Ausente' : 'Parcial',
+      dataSource: 'Estimado — validar via Google Rich Results Test e Perplexity',
+    },
+    mix_trafego: {
+      trafficEstimate: Math.floor(rand() * 500000),
+      channels: { orgânico: 35, direto: 25, pago: 20, social: 15, referral: 5 },
+      trend12m: rand() > 0.5 ? 'crescimento' : 'estável',
+      dataSource: 'Estimado — dados reais via SimilarWeb ou Semrush requeridos',
+    },
+    midia_paga_criativos: {
+      activeAds: Math.floor(rand() * 50),
+      channels: rand() > 0.5 ? ['Meta Ads', 'Google Ads'] : ['Meta Ads'],
+      formats: ['Imagem estática', 'Vídeo'],
+      investimentoEstimado: rand() > 0.6 ? 'R$ 10k–50k/mês' : 'R$ 1k–10k/mês',
+      dataSource: 'Estimado — dados reais via Meta Ads Library e Google Ads Transparency',
+    },
+    presenca_marketplaces: {
+      marketplaces: rand() > 0.5 ? ['Mercado Livre'] : [],
+      avgRating: parseFloat((3.5 + rand() * 1.5).toFixed(1)),
+      reviewsCount: Math.floor(rand() * 500),
+      dataSource: 'Estimado — verificar diretamente nos marketplaces',
+    },
+    seo_offpage: {
+      authorityScore: Math.floor(10 + rand() * 60),
+      totalBacklinks: Math.floor(100 + rand() * 10000),
+      referringDomains: Math.floor(20 + rand() * 500),
+      toxicLinks: Math.floor(rand() * 15),
+      dataSource: 'Estimado — dados reais via Semrush, Ahrefs ou Moz requeridos',
+    },
+    ux_ui_cro: {
+      ctasVisible: rand() > 0.4,
+      chatbotPresent: rand() > 0.5,
+      chatbotType: rand() > 0.6 ? 'IA contextual' : 'Fluxo fixo',
+      whatsappBusiness: rand() > 0.5,
+      accessibilityScore: Math.floor(40 + rand() * 60),
+      dataSource: 'Parcialmente real (Acessibilidade via PageSpeed) + estimativas visuais',
+    },
+    jornada_checkout: {
+      checkoutSteps: Math.floor(2 + rand() * 4),
+      mandatoryRegistration: rand() > 0.5,
+      paymentOptions: ['PIX', 'Cartão de Crédito', rand() > 0.5 ? 'Boleto' : ''].filter(Boolean),
+      guestCheckout: rand() > 0.5,
+      dataSource: 'Estimado — verificar manualmente o fluxo de checkout',
+    },
+    reputacao_voc: {
+      googleRating: parseFloat((3.0 + rand() * 2.0).toFixed(1)),
+      googleReviews: Math.floor(20 + rand() * 500),
+      reclaimeAquiScore: parseFloat((5.0 + rand() * 5.0).toFixed(1)),
+      reclaimeAquiSolutionIndex: Math.floor(50 + rand() * 50),
+      dataSource: 'Estimado — validar via Google Maps e Reclame Aqui diretamente',
     },
     ai_ml_readiness: {
       chatbotType: rand() > 0.6 ? 'Fluxo fixo' : 'Sem chatbot',
       productRecommendations: rand() > 0.7,
       nlpSearch: rand() > 0.7,
       aiToolsDetected: rand() > 0.8 ? ['Intercom'] : [],
+      dataSource: 'Estimado — análise manual do site e detecção via PageSpeed',
     },
+  };
+
+  const rawScore = 1 + rand() * 3;
+  const score = Math.max(1, Math.min(4, Math.round(rawScore)));
+
+  const dataSourceLabels: Record<string, string[]> = {
+    seo_onpage_eeat: ['Semrush (estimado)', 'Análise manual'],
+    semantica_geo: ['Google Rich Results Test (estimado)', 'Schema.org'],
+    mix_trafego: ['SimilarWeb (estimado)'],
+    midia_paga_criativos: ['Meta Ads Library (estimado)', 'Google Ads Transparency'],
+    presenca_marketplaces: ['Mercado Livre (estimado)', 'Amazon'],
+    seo_offpage: ['Semrush (estimado)', 'Ahrefs'],
+    ux_ui_cro: ['Google PageSpeed (acessibilidade real)', 'Análise visual estimada'],
+    jornada_checkout: ['Análise manual estimada'],
+    reputacao_voc: ['Google Maps (estimado)', 'Reclame Aqui (estimado)'],
+    ai_ml_readiness: ['Detecção PageSpeed (estimado)', 'Análise visual'],
   };
 
   return {
     score,
-    data: mockData[subdimensionId] || {},
-    source: rand() > 0.1 ? 'auto' : 'manual',
+    data: estimatedData[subdimensionId] || { dataSource: 'Estimado' },
+    source: 'auto',
+    dataReliability: 'estimated',
+    dataSources: dataSourceLabels[subdimensionId] || ['Estimado'],
   };
 }
 

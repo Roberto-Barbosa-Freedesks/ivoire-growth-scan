@@ -12,8 +12,10 @@ export interface SubdimensionData {
   kpis: string;
   levels: Record<1 | 2 | 3 | 4, string>;
   collectionType: 'automatizado' | 'semi-automatizado' | 'manual';
-  isConditional: boolean; // e.g., Marketplace, Checkout — only for e-commerce
+  isConditional: boolean;
   conditionalFor?: string;
+  /** Data source label shown in UI for audit reference */
+  dataSources?: string[];
 }
 
 export interface SubdimensionScore {
@@ -27,6 +29,10 @@ export interface SubdimensionScore {
   collectionStatus: CollectionStatus;
   notes?: string;
   isConditional: boolean;
+  /** Whether this data came from a real API vs simulation */
+  dataReliability?: 'real' | 'estimated' | 'manual';
+  /** Which tools/APIs were used */
+  dataSources?: string[];
 }
 
 export interface DimensionScore {
@@ -76,6 +82,8 @@ export interface DiagnosticInput {
   additionalSites?: string[];
   contextNotes?: string;
   isEcommerce: boolean;
+  /** Extracted client logo URL */
+  clientLogoUrl?: string;
 }
 
 export interface Diagnostic {
@@ -100,6 +108,19 @@ export interface User {
   email: string;
   role: 'consultor' | 'admin';
   avatar?: string;
+  /** Whether this user completed email verification */
+  emailVerified?: boolean;
+}
+
+/** Stored user with hashed password */
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'consultor' | 'admin';
+  passwordHash: string;
+  emailVerified: boolean;
+  createdAt: string;
 }
 
 export interface PageSpeedData {
@@ -115,4 +136,13 @@ export interface PageSpeedData {
   ttfb: number; // ms
   url: string;
   strategy: 'mobile' | 'desktop';
+}
+
+export interface AppSettings {
+  pageSpeedApiKey: string;
+  youtubeApiKey: string;
+  apolloApiKey: string;
+  emailJSServiceId: string;
+  emailJSTemplateId: string;
+  emailJSPublicKey: string;
 }

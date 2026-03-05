@@ -16,6 +16,7 @@ import {
 import { SUBDIMENSIONS, DIMENSION_CONFIG, LEVEL_CONFIG } from '../../data/scorecard';
 import { scoreToLevel } from '../../services/scoring';
 import type { Diagnostic, DimensionKey, MaturityLevel, SubdimensionScore } from '../../types';
+import { InfoTooltip } from '../../components/ui/Tooltip';
 
 interface Props {
   diagnostic: Diagnostic;
@@ -47,22 +48,85 @@ function LevelBadge({ level }: { level: MaturityLevel }) {
   );
 }
 
-function SourceBadge({ source }: { source: SubdimensionScore['source'] }) {
-  const map: Record<string, { label: string; color: string }> = {
-    auto: { label: 'Automático', color: '#00cc66' },
-    manual: { label: 'Manual', color: '#ff9900' },
-    insufficient: { label: 'Insuficiente', color: '#666' },
-    skipped: { label: 'Ignorado', color: '#444' },
+function SourceBadge({ source, dataSources, dataReliability }: {
+  source: SubdimensionScore['source'];
+  dataSources?: string[];
+  dataReliability?: 'real' | 'estimated' | 'manual';
+}) {
+  // If we have real/estimated info from collection, show that instead
+  if (dataReliability === 'real') {
+    const tooltipContent = (
+      <div>
+        <div style={{ fontWeight: 700, color: '#00cc66', marginBottom: 4 }}>Dado Real</div>
+        <div>Coletado diretamente de API oficial.</div>
+        {dataSources && dataSources.length > 0 && (
+          <div style={{ marginTop: 6, color: '#aaa' }}>
+            Fontes: {dataSources.join(', ')}
+          </div>
+        )}
+      </div>
+    );
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{
+          fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700,
+          letterSpacing: 0.8, textTransform: 'uppercase' as const, color: '#00cc66',
+          border: '1px solid #00cc66', borderRadius: 2, padding: '2px 6px',
+          display: 'inline-block',
+        }}>
+          Real
+        </span>
+        <InfoTooltip content={tooltipContent} maxWidth={220} />
+      </span>
+    );
+  }
+
+  if (dataReliability === 'estimated') {
+    const tooltipContent = (
+      <div>
+        <div style={{ fontWeight: 700, color: '#ff9900', marginBottom: 4 }}>Dado Estimado</div>
+        <div>Gerado via modelo preditivo. Para dados reais, integre as APIs indicadas.</div>
+        {dataSources && dataSources.length > 0 && (
+          <div style={{ marginTop: 6, color: '#aaa' }}>
+            APIs recomendadas: {dataSources.join(', ')}
+          </div>
+        )}
+      </div>
+    );
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{
+          fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700,
+          letterSpacing: 0.8, textTransform: 'uppercase' as const, color: '#ff9900',
+          border: '1px solid #ff9900', borderRadius: 2, padding: '2px 6px',
+          display: 'inline-block', opacity: 0.9,
+        }}>
+          Estimado
+        </span>
+        <InfoTooltip content={tooltipContent} maxWidth={240} />
+      </span>
+    );
+  }
+
+  // Legacy source badges
+  const map: Record<string, { label: string; color: string; tip: string }> = {
+    auto: { label: 'Automático', color: '#00cc66', tip: 'Coletado automaticamente via API.' },
+    manual: { label: 'Manual', color: '#ff9900', tip: 'Dado inserido ou ajustado manualmente.' },
+    insufficient: { label: 'Insuficiente', color: '#888', tip: 'Dados insuficientes para avaliação completa.' },
+    skipped: { label: 'Ignorado', color: '#555', tip: 'Subdimensão não aplicável ao perfil avaliado.' },
   };
   const cfg = map[source] ?? map['auto'];
   return (
-    <span style={{
-      fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700,
-      letterSpacing: 0.8, textTransform: 'uppercase' as const, color: cfg.color,
-      border: `1px solid ${cfg.color}`, borderRadius: 2, padding: '2px 6px',
-      display: 'inline-block', opacity: 0.8,
-    }}>
-      {cfg.label}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span style={{
+        fontSize: 9, fontFamily: 'Montserrat, sans-serif', fontWeight: 700,
+        letterSpacing: 0.8, textTransform: 'uppercase' as const, color: cfg.color,
+        border: `1px solid ${cfg.color}`, borderRadius: 2, padding: '2px 6px',
+        display: 'inline-block', opacity: 0.8,
+      }}>
+        {cfg.label}
+      </span>
+      <InfoTooltip content={cfg.tip} maxWidth={200} />
     </span>
   );
 }
@@ -114,7 +178,7 @@ function MetricGauge({ value, label, unit, max, good, color }: {
         <text x={cx} y={cy - 4} textAnchor="middle" fill={color} fontSize={14} fontFamily="'Bebas Neue', sans-serif">
           {displayVal}
         </text>
-        <text x={cx} y={cy + 8} textAnchor="middle" fill="#666" fontSize={8} fontFamily="Montserrat, sans-serif">
+        <text x={cx} y={cy + 8} textAnchor="middle" fill="#888" fontSize={8} fontFamily="Montserrat, sans-serif">
           {unit}
         </text>
       </svg>
@@ -129,17 +193,15 @@ function MetricGauge({ value, label, unit, max, good, color }: {
 function CheckRow({ label, value, tooltip }: { label: string; value: boolean; tooltip?: string }) {
   return (
     <div
-      title={tooltip}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
         background: value ? 'rgba(0,204,102,0.05)' : 'rgba(255,255,255,0.02)',
         borderRadius: 4, border: `1px solid ${value ? 'rgba(0,204,102,0.2)' : 'rgba(255,255,255,0.05)'}`,
-        cursor: tooltip ? 'help' : 'default',
       }}
     >
       <span style={{ fontSize: 14 }}>{value ? '✓' : '○'}</span>
-      <span style={{ fontSize: 12, color: value ? '#ccc' : '#666', fontFamily: 'Arvo, serif', flex: 1 }}>{label}</span>
-      {tooltip && <span style={{ fontSize: 10, color: '#444' }}>ℹ</span>}
+      <span style={{ fontSize: 12, color: value ? '#ccc' : '#888', fontFamily: 'Arvo, serif', flex: 1 }}>{label}</span>
+      {tooltip && <InfoTooltip content={tooltip} maxWidth={220} />}
     </div>
   );
 }
@@ -153,7 +215,7 @@ function TrafficPie({ channels }: { channels: Record<string, number> }) {
 
   return (
     <div>
-      <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
         Mix de Canais
       </div>
       <ResponsiveContainer width="100%" height={160}>
@@ -182,6 +244,27 @@ function formatKey(key: string): string {
   return key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
 }
 
+// Technical rationale per subdimension
+function getTechnicalRationale(subdimId: string): string | null {
+  const rationales: Record<string, string> = {
+    performance_web: 'Core Web Vitals são ranking factors diretos no Google Search. Sites com LCP > 2.5s perdem posições e têm taxa de rejeição até 32% maior (Google, 2023). Mobile Score < 50 compromete indexação mobile-first.',
+    seo_onpage: 'SEO on-page controla como o Googlebot interpreta e rankeia cada página. Title tags, meta descriptions e heading hierarchy são os sinais mais controláveis e de maior ROI imediato em organic search.',
+    seo_offpage: 'Authority Score reflete confiança do domínio aos olhos do Google. Domínios com DA > 40 competem em keywords de alta concorrência. A diversidade de referring domains pesa mais que volume bruto de backlinks.',
+    conteudo_blog: 'Conteúdo de blog é o principal driver de tráfego orgânico de topo de funil. Frequência de publicação > 4x/mês correlaciona com 3.5x mais tráfego (HubSpot). Artigos com 1500+ palavras rankeiam 2x mais que conteúdos curtos.',
+    presenca_social: 'Presença social validada = prova social + amplificação de conteúdo. Engajamento > 3% no Instagram indica audiência ativa. LinkedIn é o canal de maior CPL qualificado para B2B.',
+    presenca_video_audio: 'Vídeo representa 82% do tráfego global de internet (Cisco). Canais YouTube com > 10k inscritos têm autoridade de marca estabelecida. Podcasts geram média de 7x mais engajamento que posts de texto.',
+    mix_trafego: 'Diversificação de canais reduz dependência e volatilidade. Dependência > 70% em orgânico expõe a updates de algoritmo; > 70% em pago cria fragilidade financeira. Mix balanceado = crescimento sustentável.',
+    paid_media: 'Mídia paga bem estruturada deve ter ROAS > 3x para ser sustentável. Full-funnel coverage (awareness + consideração + conversão) reduz CPA em até 40% vs. campanhas only-bottom funnel.',
+    tracking_health: 'Tracking preciso é a base de toda decisão de marketing. Sem GA4 + Consent Mode v2, as campanhas operam sem dados de conversão confiáveis — o que inviabiliza otimização por ROAS ou CPA.',
+    stack_martech: 'Stack MarTech adequado ao estágio da empresa reduz fricção operacional e aumenta velocidade de execução. CDP indica maturidade avançada; ausência de ferramenta de automação limita escalabilidade.',
+    conversao_cro: 'CRO (Conversion Rate Optimization) é a alavanca de maior ROI: dobrar a taxa de conversão equivale a dobrar o budget sem aumentar custos de aquisição. Acima de 3% é benchmark de mercado para e-commerce.',
+    checkout_ux: 'Abandono de carrinho médio é 70% (Baymard Institute). Checkout em 1 etapa, Apple Pay e trust badges reduzem abandono em até 35%. Cada campo extra no formulário aumenta abandono em ~10%.',
+    reputacao_voc: 'Google Rating > 4.5 e volume > 100 reviews aumentam CTR em 15-25% nas SERPs locais. Reclame Aqui com Índice de Solução < 70% é sinal de alerta para e-commerce e serviços financeiros.',
+    analytics_insights: 'Dashboards de performance em tempo real reduzem tempo de decisão de semanas para horas. Empresas data-driven têm 23x mais probabilidade de adquirir clientes e 6x mais de reter (McKinsey).',
+  };
+  return rationales[subdimId] ?? null;
+}
+
 // Rich visualization for specific subdimensions
 function SubdimVisuals({ score }: { score: SubdimensionScore }) {
   const raw = score.rawData ?? {};
@@ -201,8 +284,13 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
 
     return (
       <div style={{ marginTop: 16 }}>
-        <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
-          Core Web Vitals & PageSpeed
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Core Web Vitals & PageSpeed
+          </div>
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            Google PageSpeed Insights API
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
           <MetricGauge value={mobileScore} label="Mobile Score" unit="/100" max={100} good={mobileScore >= 75} color={mobileScore >= 90 ? '#FFFF02' : mobileScore >= 75 ? '#00cc66' : mobileScore >= 50 ? '#ff9900' : '#ff4d4d'} />
@@ -214,14 +302,14 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
         </div>
         {tech && (
           <div style={{ marginTop: 16 }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
               Tecnologias Detectadas (via PageSpeed)
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-              <CheckRow label="Google Tag Manager" value={!!tech.gtmInstalled} tooltip="Detectado via script googletagmanager.com" />
-              <CheckRow label="GA4 / Google Analytics" value={!!tech.ga4Installed} tooltip="Detectado via google-analytics.com ou analytics.google.com" />
-              <CheckRow label="Meta Pixel (Facebook)" value={!!tech.metaPixel} tooltip="Detectado via connect.facebook.net" />
-              <CheckRow label="Consent Mode v2" value={!!tech.consentModeV2} tooltip="Detectado via cookiebot, onetrust ou consentmode" />
+              <CheckRow label="Google Tag Manager" value={!!tech.gtmInstalled} tooltip="Detectado via script googletagmanager.com no HTML da página." />
+              <CheckRow label="GA4 / Google Analytics" value={!!tech.ga4Installed} tooltip="Detectado via google-analytics.com ou analytics.google.com." />
+              <CheckRow label="Meta Pixel (Facebook)" value={!!tech.metaPixel} tooltip="Detectado via connect.facebook.net — essencial para remarketing Meta." />
+              <CheckRow label="Consent Mode v2" value={!!tech.consentModeV2} tooltip="Detectado via cookiebot, onetrust ou gtag consentmode — obrigatório para LGPD/GDPR." />
             </div>
           </div>
         )}
@@ -240,16 +328,21 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
 
     return (
       <div style={{ marginTop: 16 }}>
-        <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
-          Tracking Stack Detectado
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Tracking Stack Detectado
+          </div>
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            Google PageSpeed API
+          </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-          <CheckRow label="Google Tag Manager" value={gtm} tooltip="Centraliza a gestão de tags sem deploy de código" />
-          <CheckRow label="GA4 Configurado" value={ga4} tooltip="Mensuração de sessões, eventos e conversões" />
-          <CheckRow label="Meta Pixel" value={meta} tooltip="Essencial para campanhas de remarketing no Meta" />
-          <CheckRow label="LinkedIn Insight Tag" value={li} tooltip="Necessário para remarketing e conversão B2B no LinkedIn" />
-          <CheckRow label="Hotjar / Heatmaps" value={hotjar} tooltip="Análise comportamental de UX com gravações e mapas de calor" />
-          <CheckRow label="Consent Mode v2" value={consent} tooltip="Obrigatório para conformidade com LGPD e GDPR" />
+          <CheckRow label="Google Tag Manager" value={gtm} tooltip="Centraliza a gestão de tags sem deploy de código — reduz tempo de implementação em 80%." />
+          <CheckRow label="GA4 Configurado" value={ga4} tooltip="Mensuração de sessões, eventos e conversões com modelo de dados orientado a eventos." />
+          <CheckRow label="Meta Pixel" value={meta} tooltip="Essencial para campanhas de remarketing no Meta Ads e otimização por conversões." />
+          <CheckRow label="LinkedIn Insight Tag" value={li} tooltip="Necessário para remarketing e rastreamento de conversão B2B no LinkedIn Campaign Manager." />
+          <CheckRow label="Hotjar / Heatmaps" value={hotjar} tooltip="Análise comportamental de UX com gravações de sessão, mapas de calor e funis de conversão." />
+          <CheckRow label="Consent Mode v2" value={consent} tooltip="Obrigatório para conformidade com LGPD e GDPR. Permite modelagem de conversão mesmo sem cookies." />
         </div>
         {conflicts > 0 && (
           <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 4 }}>
@@ -271,8 +364,13 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
 
     return (
       <div style={{ marginTop: 16 }}>
-        <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
-          Stack MarTech
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Stack MarTech
+          </div>
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            PageSpeed + BuiltWith
+          </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 12 }}>
           {[
@@ -282,13 +380,13 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
               <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
         {categories.length > 0 && (
           <div>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Categorias Cobertas</div>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Categorias Cobertas</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {categories.filter(Boolean).map((cat) => (
                 <span key={cat} style={{ fontSize: 11, color: '#FFFF02', background: 'rgba(255,255,2,0.08)', border: '1px solid rgba(255,255,2,0.2)', borderRadius: 3, padding: '3px 8px', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
@@ -316,6 +414,14 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
 
     return (
       <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Mix de Tráfego
+          </div>
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            Estimado · SimilarWeb
+          </span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
           {[
             { label: 'Tráfego/Mês (estimado)', value: traffic > 0 ? traffic.toLocaleString('pt-BR') : 'N/A', color: traffic > 500000 ? '#FFFF02' : traffic > 50000 ? '#00cc66' : traffic > 5000 ? '#ff9900' : '#ff4d4d' },
@@ -324,11 +430,77 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
               <div className="font-bebas" style={{ fontSize: 20, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
         {channels && Object.keys(channels).length > 0 && <TrafficPie channels={channels} />}
+      </div>
+    );
+  }
+
+  if (score.subdimensionId === 'presenca_video_audio') {
+    const hasChannel = raw.hasChannel as boolean ?? false;
+    const subscribers = raw.subscribers as number | null ?? null;
+    const videoCount = raw.videoCount as number | null ?? null;
+    const viewCount = raw.viewCount as number | null ?? null;
+    const isReal = score.dataReliability === 'real';
+
+    return (
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Presença em Vídeo
+          </div>
+          {isReal ? (
+            <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+              YouTube Data API v3
+            </span>
+          ) : (
+            <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+              {hasChannel ? 'Canal Detectado · Sem API Key' : 'Estimado'}
+            </span>
+          )}
+        </div>
+
+        {!hasChannel ? (
+          <div style={{ padding: '12px 16px', background: 'rgba(255,77,77,0.06)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 6 }}>
+            <span style={{ fontSize: 12, color: '#ff9900', fontFamily: 'Arvo, serif' }}>
+              Nenhum canal YouTube detectado. Presença em vídeo é um diferencial competitivo crescente — considere criar conteúdo regular.
+            </span>
+          </div>
+        ) : subscribers !== null ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {[
+              {
+                label: 'Inscritos',
+                value: subscribers > 999999 ? `${(subscribers / 1000000).toFixed(1)}M` : subscribers > 999 ? `${(subscribers / 1000).toFixed(1)}K` : String(subscribers),
+                color: subscribers >= 100000 ? '#FFFF02' : subscribers >= 10000 ? '#00cc66' : subscribers >= 1000 ? '#ff9900' : '#ff4d4d',
+              },
+              {
+                label: 'Vídeos',
+                value: videoCount !== null ? String(videoCount) : 'N/A',
+                color: (videoCount ?? 0) >= 50 ? '#00cc66' : '#ff9900',
+              },
+              {
+                label: 'Visualizações',
+                value: viewCount !== null ? (viewCount > 999999 ? `${(viewCount / 1000000).toFixed(1)}M` : viewCount > 999 ? `${(viewCount / 1000).toFixed(1)}K` : String(viewCount)) : 'N/A',
+                color: '#FFFF02',
+              },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+                <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
+                <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '12px 16px', background: 'rgba(255,153,0,0.06)', border: '1px solid rgba(255,153,0,0.2)', borderRadius: 6 }}>
+            <span style={{ fontSize: 12, color: '#ff9900', fontFamily: 'Arvo, serif' }}>
+              Canal YouTube detectado via URL, mas métricas reais requerem YouTube Data API v3. Configure a chave em Configurações para dados precisos.
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -340,18 +512,31 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     const toxic = raw.toxicLinks as number ?? 0;
 
     return (
-      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {[
-          { label: 'Authority Score', value: String(authority), color: authority >= 40 ? '#00cc66' : authority >= 20 ? '#ff9900' : '#ff4d4d', tooltip: '0–100: Moz/Semrush domain authority. >= 40 é competitivo.' },
-          { label: 'Backlinks Totais', value: backlinks > 999 ? `${(backlinks / 1000).toFixed(1)}K` : String(backlinks), color: '#FFFF02', tooltip: 'Quanto maior, mais autoridade de domínio.' },
-          { label: 'Domínios Referência', value: String(domains), color: domains >= 100 ? '#00cc66' : '#ff9900', tooltip: 'Diversidade de domínios referenciando o site.' },
-          { label: 'Links Tóxicos', value: String(toxic), color: toxic === 0 ? '#00cc66' : '#ff9900', tooltip: 'Links de sites de spam que prejudicam o ranking.' },
-        ].map(({ label, value, color, tooltip }) => (
-          <div key={label} title={tooltip} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center', cursor: 'help' }}>
-            <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-            <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            SEO Off-Page
           </div>
-        ))}
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            Estimado · Semrush / Moz
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { label: 'Authority Score', value: String(authority), color: authority >= 40 ? '#00cc66' : authority >= 20 ? '#ff9900' : '#ff4d4d', tooltip: 'Domain Authority 0–100 (Semrush/Moz). Score ≥ 40 é competitivo em keywords de média dificuldade.' },
+            { label: 'Backlinks Totais', value: backlinks > 999 ? `${(backlinks / 1000).toFixed(1)}K` : String(backlinks), color: '#FFFF02', tooltip: 'Volume total de backlinks apontando para o domínio. Mais importante é a diversidade de domínios únicos.' },
+            { label: 'Domínios Referência', value: String(domains), color: domains >= 100 ? '#00cc66' : '#ff9900', tooltip: 'Número de domínios únicos referenciando o site — métrica mais importante que volume bruto de links.' },
+            { label: 'Links Tóxicos', value: String(toxic), color: toxic === 0 ? '#00cc66' : '#ff9900', tooltip: 'Links de sites de spam ou penalizados. Links tóxicos podem prejudicar rankings — use Google Disavow se necessário.' },
+          ].map(({ label, value, color, tooltip }) => (
+            <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                <InfoTooltip content={tooltip} maxWidth={240} />
+              </div>
+              <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
+              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -363,18 +548,31 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     const raSolution = raw.reclaimeAquiSolutionIndex as number ?? 0;
 
     return (
-      <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {[
-          { label: 'Google Rating', value: gRating.toFixed(1) + '★', color: gRating >= 4.5 ? '#00cc66' : gRating >= 4.0 ? '#ff9900' : '#ff4d4d', tooltip: 'Avaliação no Google Meu Negócio. >= 4.5 é excelente.' },
-          { label: 'Reviews Google', value: gReviews > 999 ? `${(gReviews / 1000).toFixed(1)}K` : String(gReviews), color: '#FFFF02', tooltip: 'Volume de avaliações — sinal de social proof.' },
-          { label: 'Reclame Aqui', value: raScore.toFixed(1), color: raScore >= 8 ? '#00cc66' : raScore >= 6 ? '#ff9900' : '#ff4d4d', tooltip: 'Score no Reclame Aqui: 0–10. >= 8 = "Ótimo".' },
-          { label: 'Índice Solução', value: `${raSolution.toFixed(0)}%`, color: raSolution >= 80 ? '#00cc66' : raSolution >= 60 ? '#ff9900' : '#ff4d4d', tooltip: '% de reclamações resolvidas no Reclame Aqui.' },
-        ].map(({ label, value, color, tooltip }) => (
-          <div key={label} title={tooltip} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center', cursor: 'help' }}>
-            <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-            <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Reputação & VOC
           </div>
-        ))}
+          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            Estimado · Google Places / Reclame Aqui
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { label: 'Google Rating', value: gRating.toFixed(1) + '★', color: gRating >= 4.5 ? '#00cc66' : gRating >= 4.0 ? '#ff9900' : '#ff4d4d', tooltip: 'Avaliação no Google Meu Negócio. ≥ 4.5 é excelente; < 4.0 impacta CTR nas SERPs locais.' },
+            { label: 'Reviews Google', value: gReviews > 999 ? `${(gReviews / 1000).toFixed(1)}K` : String(gReviews), color: '#FFFF02', tooltip: 'Volume de avaliações — sinal de social proof. Mais de 100 reviews é o benchmark mínimo para credibilidade.' },
+            { label: 'Reclame Aqui', value: raScore.toFixed(1), color: raScore >= 8 ? '#00cc66' : raScore >= 6 ? '#ff9900' : '#ff4d4d', tooltip: 'Score 0–10 no Reclame Aqui. ≥ 8 = "Ótimo"; 6–7.9 = "Bom"; < 6 = risco de reputação.' },
+            { label: 'Índice Solução', value: `${raSolution.toFixed(0)}%`, color: raSolution >= 80 ? '#00cc66' : raSolution >= 60 ? '#ff9900' : '#ff4d4d', tooltip: '% de reclamações respondidas e resolvidas. ≥ 80% demonstra comprometimento com o cliente.' },
+          ].map(({ label, value, color, tooltip }) => (
+            <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                <InfoTooltip content={tooltip} maxWidth={240} />
+              </div>
+              <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
+              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -413,6 +611,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
 }) {
   const level = score.level ?? scoreToLevel(score.score);
   const levelCfg = LEVEL_CONFIG[level];
+  const rationale = getTechnicalRationale(score.subdimensionId);
 
   return (
     <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.15s ease' }}>
@@ -440,7 +639,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
             }}>E-COMM</span>
           )}
           {subdimDef?.description && (
-            <div style={{ fontSize: 11, color: '#666', fontFamily: 'Arvo, serif', marginTop: 3 }}>
+            <div style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', marginTop: 3 }}>
               {subdimDef.description.slice(0, 80)}{subdimDef.description.length > 80 ? '…' : ''}
             </div>
           )}
@@ -449,8 +648,12 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
         <ScoreBar score={score.score} />
 
         <LevelBadge level={level} />
-        <SourceBadge source={score.source} />
-        <span style={{ color: '#555', fontSize: 14, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', display: 'inline-block' }}>
+        <SourceBadge
+          source={score.source}
+          dataSources={score.dataSources}
+          dataReliability={score.dataReliability}
+        />
+        <span style={{ color: '#aaa', fontSize: 14, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', display: 'inline-block' }}>
           ▾
         </span>
       </button>
@@ -465,17 +668,17 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
             <div>
               {subdimDef?.description && (
                 <div style={{ marginBottom: 14 }}>
-                  <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                     Sobre Esta Subdimensão
                   </div>
-                  <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.6, margin: 0 }}>
+                  <p style={{ fontSize: 12, color: '#aaa', fontFamily: 'Arvo, serif', lineHeight: 1.6, margin: 0 }}>
                     {subdimDef.description}
                   </p>
                 </div>
               )}
 
               <div>
-                <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                   Critério Atual — {level}
                 </div>
                 <div style={{
@@ -493,11 +696,28 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
 
               {subdimDef?.kpis && (
                 <div style={{ marginTop: 14 }}>
-                  <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                     KPIs Avaliados
                   </div>
-                  <p style={{ fontSize: 11, color: '#666', fontFamily: 'Arvo, serif', lineHeight: 1.5, margin: 0 }}>
+                  <p style={{ fontSize: 11, color: '#aaa', fontFamily: 'Arvo, serif', lineHeight: 1.5, margin: 0 }}>
                     {subdimDef.kpis}
+                  </p>
+                </div>
+              )}
+
+              {/* Technical & Strategic Rationale */}
+              {rationale && (
+                <div style={{
+                  marginTop: 14, padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.02)', borderRadius: 6,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderLeft: '3px solid rgba(255,255,2,0.3)',
+                }}>
+                  <div className="font-montserrat" style={{ fontSize: 9, color: '#FFFF02', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                    Racional Técnico & Estratégico
+                  </div>
+                  <p style={{ fontSize: 11, color: '#aaa', fontFamily: 'Arvo, serif', lineHeight: 1.65, margin: 0 }}>
+                    {rationale}
                   </p>
                 </div>
               )}
@@ -505,21 +725,33 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
 
             {/* Right: Raw data table */}
             <div>
-              <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
-                Dados Coletados
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+                  Dados Coletados
+                </div>
+                {score.dataReliability === 'real' && (
+                  <span style={{ fontSize: 9, padding: '1px 5px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 2, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+                    Real
+                  </span>
+                )}
+                {score.dataReliability === 'estimated' && (
+                  <span style={{ fontSize: 9, padding: '1px 5px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 2, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+                    Estimado
+                  </span>
+                )}
               </div>
               {Object.keys(score.rawData ?? {}).length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {Object.entries(score.rawData ?? {})
                     .filter(([k, v]) => v !== undefined && !['mobile', 'desktop', 'tech'].includes(k))
-                    .slice(0, 12)
+                    .slice(0, 14)
                     .map(([k, v]) => (
                       <div key={k} style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12,
                         padding: '5px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: 4,
                         border: '1px solid rgba(255,255,255,0.05)',
                       }}>
-                        <span style={{ fontSize: 11, color: '#777', fontFamily: 'Montserrat, sans-serif', fontWeight: 500 }}>
+                        <span style={{ fontSize: 11, color: '#999', fontFamily: 'Montserrat, sans-serif', fontWeight: 500 }}>
                           {formatKey(k)}
                         </span>
                         <span style={{
@@ -533,7 +765,29 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
                     ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 12, color: '#555', fontFamily: 'Arvo, serif' }}>Nenhum dado disponível.</p>
+                <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
+                    Dados detalhados requerem integração com APIs externas (SimilarWeb, Semrush, etc.).
+                  </p>
+                </div>
+              )}
+
+              {/* Source attribution */}
+              {score.dataSources && score.dataSources.length > 0 && (
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                  {score.dataSources.map((src) => (
+                    <span key={src} style={{
+                      fontSize: 9, padding: '2px 6px',
+                      background: score.dataReliability === 'real' ? 'rgba(0,204,102,0.08)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${score.dataReliability === 'real' ? 'rgba(0,204,102,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                      borderRadius: 3,
+                      color: score.dataReliability === 'real' ? '#00cc66' : '#888',
+                      fontFamily: 'Montserrat, sans-serif', fontWeight: 600,
+                    }}>
+                      {src}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -555,12 +809,12 @@ function SubdimBarChart({ scores }: { scores: SubdimensionScore[] }) {
 
   return (
     <div>
-      <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
         Comparativo de Scores
       </div>
       <ResponsiveContainer width="100%" height={data.length * 44 + 20}>
         <BarChart data={data} layout="vertical" barSize={16} margin={{ top: 0, right: 40, left: 8, bottom: 0 }}>
-          <XAxis type="number" domain={[0, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: '#555', fontSize: 10, fontFamily: 'Montserrat, sans-serif' }} axisLine={false} tickLine={false} />
+          <XAxis type="number" domain={[0, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: '#888', fontSize: 10, fontFamily: 'Montserrat, sans-serif' }} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="name" width={180} tick={{ fill: '#999', fontSize: 11, fontFamily: 'Arvo, serif' }} axisLine={false} tickLine={false} />
           <RechartsTooltip
             cursor={{ fill: 'rgba(255,255,255,0.03)' }}
@@ -599,6 +853,9 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
   const dimensionSubdims = diagnostic.subdimensionScores.filter((s) => s.dimension === dimensionKey);
   const relevantSubdims = dimensionSubdims.filter((s) => s.source !== 'skipped');
 
+  const realCount = relevantSubdims.filter((s) => s.dataReliability === 'real').length;
+  const estimatedCount = relevantSubdims.filter((s) => s.dataReliability === 'estimated').length;
+
   const avgScore = relevantSubdims.length > 0
     ? relevantSubdims.reduce((sum, s) => sum + s.score, 0) / relevantSubdims.length
     : 1;
@@ -619,7 +876,7 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
           <DimensionRadial score={score} />
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <span className="font-bebas" style={{ fontSize: 28, color: scoreColor(score), lineHeight: 1 }}>{score.toFixed(2)}</span>
-            <span style={{ fontSize: 9, color: '#666', fontFamily: 'Montserrat, sans-serif' }}>/4.0</span>
+            <span style={{ fontSize: 9, color: '#888', fontFamily: 'Montserrat, sans-serif' }}>/4.0</span>
           </div>
         </div>
 
@@ -631,9 +888,19 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
           <h1 className="font-bebas" style={{ fontSize: 48, color: '#fff', margin: 0, letterSpacing: 2, lineHeight: 1 }}>
             {dimConfig.name}
           </h1>
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <LevelBadge level={level} />
-            <span style={{ fontSize: 12, color: '#666', fontFamily: 'Arvo, serif' }}>{relevantSubdims.length} subdimensões avaliadas</span>
+            <span style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif' }}>{relevantSubdims.length} subdimensões avaliadas</span>
+            {realCount > 0 && (
+              <span style={{ fontSize: 10, padding: '2px 7px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.25)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+                {realCount} real{realCount > 1 ? 'is' : ''}
+              </span>
+            )}
+            {estimatedCount > 0 && (
+              <span style={{ fontSize: 10, padding: '2px 7px', background: 'rgba(255,153,0,0.08)', border: '1px solid rgba(255,153,0,0.2)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+                {estimatedCount} estimado{estimatedCount > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
@@ -645,7 +912,7 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
             { label: 'Gap Crítico', value: worstSubdim?.score?.toFixed(1) ?? '–', color: '#ff4d4d' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '6px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.07)' }}>
-              <span style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5 }}>{label}</span>
+              <span style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5 }}>{label}</span>
               <span className="font-bebas" style={{ fontSize: 20, color }}>{value}</span>
             </div>
           ))}
@@ -659,17 +926,17 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
 
       {/* Table header */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto auto auto', gap: 16, padding: '10px 22px', alignItems: 'center' }}>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Subdimensão</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Score</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Nível</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>Fonte</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Subdimensão</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Score</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Nível</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Fonte</span>
         <span />
       </div>
 
       {/* Subdimension rows */}
       <div className="ivoire-card" style={{ overflow: 'hidden' }}>
         {dimensionSubdims.length === 0 ? (
-          <p style={{ padding: 24, color: '#666', fontFamily: 'Arvo, serif', textAlign: 'center' }}>
+          <p style={{ padding: 24, color: '#888', fontFamily: 'Arvo, serif', textAlign: 'center' }}>
             Nenhuma subdimensão disponível.
           </p>
         ) : (
