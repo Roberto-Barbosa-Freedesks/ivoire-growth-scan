@@ -1,0 +1,5 @@
+ivoire-app/node_modules
+ivoire-app/dist
+.DS_Store
+*.env
+.env.local

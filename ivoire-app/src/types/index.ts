@@ -1,0 +1,118 @@
+export type MaturityLevel = 'Intuitivo' | 'Reativo' | 'Ativo' | 'Exponencial';
+
+export type DimensionKey = 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE';
+
+export type CollectionStatus = 'pending' | 'collecting' | 'completed' | 'error' | 'manual';
+
+export interface SubdimensionData {
+  id: string;
+  name: string;
+  dimension: DimensionKey;
+  description: string;
+  kpis: string;
+  levels: Record<1 | 2 | 3 | 4, string>;
+  collectionType: 'automatizado' | 'semi-automatizado' | 'manual';
+  isConditional: boolean; // e.g., Marketplace, Checkout — only for e-commerce
+  conditionalFor?: string;
+}
+
+export interface SubdimensionScore {
+  subdimensionId: string;
+  name: string;
+  dimension: DimensionKey;
+  score: number; // 1–4
+  level: MaturityLevel;
+  source: 'auto' | 'manual' | 'insufficient' | 'skipped';
+  rawData: Record<string, unknown>;
+  collectionStatus: CollectionStatus;
+  notes?: string;
+  isConditional: boolean;
+}
+
+export interface DimensionScore {
+  key: DimensionKey;
+  name: string;
+  score: number; // 1–4 weighted avg
+  level: MaturityLevel;
+  subdimensions: SubdimensionScore[];
+  weight: number; // 0.25 each by default
+}
+
+export interface Insight {
+  id: string;
+  type: 'gap_critico' | 'alavanca' | 'erosao_funil' | 'oportunidade';
+  dimension: DimensionKey;
+  subdimensionId: string;
+  title: string;
+  description: string;
+  priority: 'alta' | 'media' | 'baixa';
+  impactEstimate: string;
+}
+
+export interface Recommendation {
+  id: string;
+  dimension: DimensionKey;
+  subdimensionId: string;
+  title: string;
+  what: string;
+  why: string;
+  expectedImpact: string;
+  effort: 'baixo' | 'medio' | 'alto';
+  priority: number; // 1 = highest
+  timeframe: 'imediato' | 'curto_prazo' | 'medio_prazo';
+}
+
+export interface DiagnosticInput {
+  companyName: string;
+  segment: string;
+  geography: 'nacional' | 'regional';
+  geographyDetail?: string;
+  siteUrl: string;
+  linkedIn?: string;
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  competitors?: string[];
+  additionalSites?: string[];
+  contextNotes?: string;
+  isEcommerce: boolean;
+}
+
+export interface Diagnostic {
+  id: string;
+  input: DiagnosticInput;
+  status: 'draft' | 'collecting' | 'manual_input' | 'processing' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+  collectionProgress: Record<string, CollectionStatus>;
+  subdimensionScores: SubdimensionScore[];
+  dimensionScores?: DimensionScore[];
+  overallScore?: number;
+  overallLevel?: MaturityLevel;
+  executiveNarrative?: string;
+  insights?: Insight[];
+  recommendations?: Recommendation[];
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'consultor' | 'admin';
+  avatar?: string;
+}
+
+export interface PageSpeedData {
+  lcp: number; // seconds
+  inp?: number; // ms
+  cls: number;
+  mobileScore: number; // 0–100
+  desktopScore: number; // 0–100
+  accessibilityScore: number; // 0–100
+  bestPracticesScore: number; // 0–100
+  seoScore: number; // 0–100
+  fcp: number; // seconds
+  ttfb: number; // ms
+  url: string;
+  strategy: 'mobile' | 'desktop';
+}
