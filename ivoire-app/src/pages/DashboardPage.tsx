@@ -109,7 +109,7 @@ function StatCard({ label, value, sub, accent, color }: StatCardProps) {
 }
 
 interface DeleteButtonProps {
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
 }
 
 function DeleteButton({ onClick }: DeleteButtonProps) {
@@ -600,7 +600,7 @@ export default function DashboardPage() {
                       <circle cx="12" cy="12" r="3" />
                     </svg>
                   </button>
-                  <DeleteButton onClick={(e) => handleDelete(e as unknown as React.MouseEvent, diag.id)} />
+                  <DeleteButton onClick={(e: React.MouseEvent) => handleDelete(e, diag.id)} />
                 </div>
               </div>
             ))}

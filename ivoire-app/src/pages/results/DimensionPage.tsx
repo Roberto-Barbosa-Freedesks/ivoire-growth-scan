@@ -247,7 +247,6 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
                     borderRadius: 6,
                     background: levelCfg?.bg ?? 'rgba(255,255,255,0.03)',
                     border: `1px solid ${levelCfg?.color ?? '#555'}`,
-                    borderOpacity: 0.3,
                   }}
                 >
                   <p

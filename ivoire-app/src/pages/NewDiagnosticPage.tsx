@@ -96,10 +96,8 @@ function FieldLabel({
 
 function StepProgressBar({
   currentStep,
-  totalSteps,
 }: {
   currentStep: number;
-  totalSteps: number;
 }) {
   const steps = [
     { label: 'Dados Básicos', icon: '01' },
@@ -925,7 +923,7 @@ export default function NewDiagnosticPage() {
 
       {/* Form container */}
       <div style={{ maxWidth: '800px' }}>
-        <StepProgressBar currentStep={currentStep} totalSteps={TOTAL_STEPS} />
+        <StepProgressBar currentStep={currentStep} />
 
         {/* Step content */}
         <div

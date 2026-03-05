@@ -98,19 +98,24 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 }
 
 interface CustomAngleLabelProps {
-  x?: number;
-  y?: number;
-  cx?: number;
-  cy?: number;
+  x?: number | string;
+  y?: number | string;
+  cx?: number | string;
+  cy?: number | string;
   payload?: { value: string };
+  [key: string]: unknown;
 }
 
 function CustomAngleAxisTick({ x = 0, y = 0, cx = 0, cy = 0, payload }: CustomAngleLabelProps) {
   if (!payload) return null;
 
-  const dx = x - cx;
-  const dy = y - cy;
-  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const px = Number(x);
+  const py = Number(y);
+  const pcx = Number(cx);
+  const pcy = Number(cy);
+
+  const dx = px - pcx;
+  const dy = py - pcy;
 
   // Determine text-anchor based on position relative to center
   let textAnchor: 'start' | 'middle' | 'end' = 'middle';
@@ -120,13 +125,11 @@ function CustomAngleAxisTick({ x = 0, y = 0, cx = 0, cy = 0, payload }: CustomAn
 
   // Offset tick label slightly outward
   const offset = 12;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const nx = dx / length;
-  const ny = dy / length;
-  const lx = x + nx * offset;
-  const ly = y + ny * offset;
-
-  void angle; // suppress unused warning
+  const length = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+  const lx = px + ux * offset;
+  const ly = py + uy * offset;
 
   return (
     <g>

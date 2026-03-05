@@ -1,5 +1,5 @@
 import PptxGenJS from 'pptxgenjs';
-import type { Diagnostic, DimensionKey } from '../../types';
+import type { Diagnostic, DimensionScore, DimensionKey } from '../../types';
 import { DIMENSION_CONFIG } from '../../data/scorecard';
 
 // Ivoire Design Tokens
@@ -57,7 +57,7 @@ function addSlideTitle(slide: PptxGenJS.Slide, title: string, subtitle?: string)
     });
   }
   // Yellow accent line under title
-  slide.addShape('rect', {
+  slide.addShape('rect' as PptxGenJS.ShapeNameProps, {
     x: M.left, y: 1.08, w: 9.32, h: 0.04,
     fill: { color: T.yellow },
     line: { color: T.yellow },
@@ -78,7 +78,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
   slide1.background = { color: T.bg };
 
   // Yellow accent bar at top
-  slide1.addShape('rect', { x: 0, y: 0, w: 10, h: 0.08, fill: { color: T.yellow } });
+  slide1.addShape('rect' as PptxGenJS.ShapeNameProps, { x: 0, y: 0, w: 10, h: 0.08, fill: { color: T.yellow } });
 
   // IVOIRE label (yellow)
   slide1.addText('IVOIRE', {
@@ -136,7 +136,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
   });
 
   // Level badge
-  slide2.addShape('rect', { x: 4.1, y: 1.5, w: 2.5, h: 0.6, fill: { color: scoreColor + '25' }, line: { color: scoreColor, size: 1.5 } });
+  slide2.addShape('rect' as PptxGenJS.ShapeNameProps, { x: 4.1, y: 1.5, w: 2.5, h: 0.6, fill: { color: scoreColor + '25' }, line: { color: scoreColor, size: 1.5 } });
   slide2.addText((overallLevel || '').toUpperCase(), {
     x: 4.1, y: 1.5, w: 2.5, h: 0.6,
     fontSize: 22, bold: true, color: scoreColor, fontFace: FONTS.title,
@@ -173,7 +173,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
 
     // Header row
     for (const col of cols) {
-      slide3.addShape('rect', { x: col.x, y: 1.5, w: col.w - 0.05, h: 0.45, fill: { color: T.yellow } });
+      slide3.addShape('rect' as PptxGenJS.ShapeNameProps, { x: col.x, y: 1.5, w: col.w - 0.05, h: 0.45, fill: { color: T.yellow } });
       slide3.addText(col.label, { x: col.x, y: 1.5, w: col.w - 0.05, h: 0.45, fontSize: 10, bold: true, color: T.bg, fontFace: FONTS.title, align: 'center', valign: 'middle' });
     }
 
@@ -189,7 +189,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
         { x: cols[3].x, w: cols[3].w, text: `${dim.subdimensions.filter(s => s.source !== 'skipped').length} avaliadas`, color: T.gray, bold: false },
       ];
       for (const cell of row) {
-        slide3.addShape('rect', { x: cell.x, y, w: (cols[row.indexOf(cell)].w) - 0.05, h: 0.55, fill: { color: rowBg } });
+        slide3.addShape('rect' as PptxGenJS.ShapeNameProps, { x: cell.x, y, w: (cols[row.indexOf(cell)].w) - 0.05, h: 0.55, fill: { color: rowBg } });
         slide3.addText(cell.text, { x: cell.x + 0.05, y, w: (cols[row.indexOf(cell)].w) - 0.1, h: 0.55, fontSize: 13, bold: cell.bold, color: cell.color, fontFace: FONTS.body, align: 'center', valign: 'middle' });
       }
     });
@@ -211,7 +211,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
     addSlideTitle(slideD, `${cfg.label}`, `Score ${dim.score.toFixed(1)} / 4,0 — Nível ${dim.level}`);
 
     // Level highlight
-    slideD.addShape('rect', { x: M.left, y: 1.35, w: 2.0, h: 0.5, fill: { color: lc + '20' }, line: { color: lc, size: 1 } });
+    slideD.addShape('rect' as PptxGenJS.ShapeNameProps, { x: M.left, y: 1.35, w: 2.0, h: 0.5, fill: { color: lc + '20' }, line: { color: lc, size: 1 } });
     slideD.addText(dim.level.toUpperCase(), { x: M.left, y: 1.35, w: 2.0, h: 0.5, fontSize: 14, bold: true, color: lc, fontFace: FONTS.title, align: 'center', valign: 'middle' });
 
     // Subdimensions list
@@ -219,10 +219,11 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
     relevantSubs.slice(0, 6).forEach((sd, i) => {
       const y = 2.0 + i * 0.52;
       const x1 = M.left;
+      const x2 = 1.5;
       const scoreColor = levelColor(sd.level);
 
       // Score box
-      slideD.addShape('rect', { x: x1, y, w: 0.7, h: 0.44, fill: { color: scoreColor + '25' }, line: { color: scoreColor, size: 1 } });
+      slideD.addShape('rect' as PptxGenJS.ShapeNameProps, { x: x1, y, w: 0.7, h: 0.44, fill: { color: scoreColor + '25' }, line: { color: scoreColor, size: 1 } });
       slideD.addText(`${sd.score}`, { x: x1, y, w: 0.7, h: 0.44, fontSize: 18, bold: true, color: scoreColor, fontFace: FONTS.number, align: 'center', valign: 'middle' });
 
       // Name
@@ -265,8 +266,8 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
     const y = 1.5 + row * 1.8;
     const ic = insightColors[ins.type] || T.gray;
 
-    slideIns.addShape('rect', { x, y, w: 4.6, h: 1.65, fill: { color: '1E1E1E' }, line: { color: ic + '60', size: 1 } });
-    slideIns.addShape('rect', { x, y, w: 4.6, h: 0.28, fill: { color: ic + '30' } });
+    slideIns.addShape('rect' as PptxGenJS.ShapeNameProps, { x, y, w: 4.6, h: 1.65, fill: { color: '1E1E1E' }, line: { color: ic + '60', size: 1 } });
+    slideIns.addShape('rect' as PptxGenJS.ShapeNameProps, { x, y, w: 4.6, h: 0.28, fill: { color: ic + '30' } });
     slideIns.addText(insightLabels[ins.type] || ins.type, { x: x + 0.1, y, w: 4.4, h: 0.28, fontSize: 8, bold: true, color: ic, fontFace: FONTS.title, align: 'left', valign: 'middle' });
     slideIns.addText(ins.title, { x: x + 0.1, y: y + 0.32, w: 4.4, h: 0.35, fontSize: 11, bold: true, color: T.white, fontFace: FONTS.title, align: 'left', wrap: true });
     slideIns.addText(ins.description.slice(0, 160) + (ins.description.length > 160 ? '...' : ''), { x: x + 0.1, y: y + 0.7, w: 4.4, h: 0.65, fontSize: 9, color: 'BBBBBB', fontFace: FONTS.body, align: 'left', wrap: true });
@@ -286,10 +287,10 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
     const effortColors: Record<string, string> = { baixo: T.ativo, medio: T.yellow, alto: T.intuitivo };
     const ec = effortColors[rec.effort] || T.gray;
 
-    slideRec.addShape('rect', { x: M.left, y, w: 9.32, h: 0.68, fill: { color: '1E1E1E' }, line: { color: '333333', size: 1 } });
+    slideRec.addShape('rect' as PptxGenJS.ShapeNameProps, { x: M.left, y, w: 9.32, h: 0.68, fill: { color: '1E1E1E' }, line: { color: '333333', size: 1 } });
 
     // Priority number
-    slideRec.addShape('rect', { x: M.left, y, w: 0.55, h: 0.68, fill: { color: T.yellow + '20' }, line: { color: T.yellow, size: 1 } });
+    slideRec.addShape('rect' as PptxGenJS.ShapeNameProps, { x: M.left, y, w: 0.55, h: 0.68, fill: { color: T.yellow + '20' }, line: { color: T.yellow, size: 1 } });
     slideRec.addText(`${rec.priority}`, { x: M.left, y, w: 0.55, h: 0.68, fontSize: 18, bold: true, color: T.yellow, fontFace: FONTS.number, align: 'center', valign: 'middle' });
 
     // Title
@@ -297,7 +298,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
     slideRec.addText(rec.expectedImpact.slice(0, 80) + (rec.expectedImpact.length > 80 ? '...' : ''), { x: M.left + 0.65, y: y + 0.38, w: 6.0, h: 0.22, fontSize: 9, color: T.gray, fontFace: FONTS.body, align: 'left' });
 
     // Effort badge
-    slideRec.addShape('rect', { x: 7.0, y: y + 0.12, w: 0.9, h: 0.3, fill: { color: ec + '20' }, line: { color: ec, size: 1 } });
+    slideRec.addShape('rect' as PptxGenJS.ShapeNameProps, { x: 7.0, y: y + 0.12, w: 0.9, h: 0.3, fill: { color: ec + '20' }, line: { color: ec, size: 1 } });
     slideRec.addText(rec.effort.toUpperCase(), { x: 7.0, y: y + 0.12, w: 0.9, h: 0.3, fontSize: 8, bold: true, color: ec, fontFace: FONTS.body, align: 'center', valign: 'middle' });
 
     // Timeframe
@@ -311,7 +312,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
   const slideFinal = pptx.addSlide();
   slideFinal.background = { color: T.bg };
 
-  slideFinal.addShape('rect', { x: 0, y: 0, w: 10, h: 5.625, fill: { color: T.bg } });
+  slideFinal.addShape('rect' as PptxGenJS.ShapeNameProps, { x: 0, y: 0, w: 10, h: 5.625, fill: { color: T.bg } });
 
   slideFinal.addText('PRÓXIMOS PASSOS', {
     x: M.left, y: 0.8, w: 9.32, h: 0.6,
@@ -332,7 +333,7 @@ export async function exportToPPTX(diagnostic: Diagnostic): Promise<void> {
 
   steps.forEach((s, i) => {
     const x = M.left + i * 3.1;
-    slideFinal.addShape('rect', { x, y: 2.2, w: 2.9, h: 2.5, fill: { color: '1E1E1E' }, line: { color: T.yellow + '40', size: 1 } });
+    slideFinal.addShape('rect' as PptxGenJS.ShapeNameProps, { x, y: 2.2, w: 2.9, h: 2.5, fill: { color: '1E1E1E' }, line: { color: T.yellow + '40', size: 1 } });
     slideFinal.addText(s.n, { x, y: 2.25, w: 2.9, h: 0.6, fontSize: 42, bold: true, color: T.yellow, fontFace: FONTS.number, align: 'center' });
     slideFinal.addText(s.title, { x: x + 0.1, y: 2.9, w: 2.7, h: 0.5, fontSize: 11, bold: true, color: T.white, fontFace: FONTS.title, align: 'center', wrap: true });
     slideFinal.addText(s.desc, { x: x + 0.1, y: 3.45, w: 2.7, h: 1.1, fontSize: 9, color: T.gray, fontFace: FONTS.body, align: 'center', valign: 'top', wrap: true });
