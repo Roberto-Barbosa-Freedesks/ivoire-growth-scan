@@ -38,18 +38,18 @@ interface AppState {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  pageSpeedApiKey: '',
-  youtubeApiKey: '',
+  pageSpeedApiKey: import.meta.env.VITE_PAGESPEED_API_KEY ?? '',
+  youtubeApiKey: import.meta.env.VITE_YOUTUBE_API_KEY ?? '',
   apolloApiKey: '',
   emailJSServiceId: '',
   emailJSTemplateId: '',
   emailJSPublicKey: '',
-  googlePlacesApiKey: '',
-  metaAccessToken: '',
-  spotifyClientId: '',
-  spotifyClientSecret: '',
-  similarwebApiKey: '',
-  semrushApiKey: '',
+  googlePlacesApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY ?? '',
+  metaAccessToken: import.meta.env.VITE_META_ACCESS_TOKEN ?? '',
+  spotifyClientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? '',
+  spotifyClientSecret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET ?? '',
+  similarwebApiKey: import.meta.env.VITE_SIMILARWEB_API_KEY ?? '',
+  semrushApiKey: import.meta.env.VITE_SEMRUSH_API_KEY ?? '',
 };
 
 // Pre-seeded admin user (password: ivoire2024)
