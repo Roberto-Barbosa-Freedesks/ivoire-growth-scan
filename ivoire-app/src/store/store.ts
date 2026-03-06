@@ -44,6 +44,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   emailJSServiceId: '',
   emailJSTemplateId: '',
   emailJSPublicKey: '',
+  googlePlacesApiKey: '',
+  metaAccessToken: '',
+  spotifyClientId: '',
+  spotifyClientSecret: '',
+  similarwebApiKey: '',
+  semrushApiKey: '',
 };
 
 // Pre-seeded admin user (password: ivoire2024)

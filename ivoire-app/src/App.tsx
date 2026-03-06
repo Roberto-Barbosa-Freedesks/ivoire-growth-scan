@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import NewDiagnosticPage from './pages/NewDiagnosticPage';
 import CollectionPage from './pages/CollectionPage';
 import ResultsLayout from './pages/results/ResultsLayout';
+import SettingsPage from './pages/SettingsPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="diagnostic/:id/collecting" element={<CollectionPage />} />
           <Route path="diagnostic/:id/results" element={<ResultsLayout />} />
           <Route path="diagnostic/:id/results/:tab" element={<ResultsLayout />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

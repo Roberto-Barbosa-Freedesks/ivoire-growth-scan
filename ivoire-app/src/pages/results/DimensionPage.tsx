@@ -51,7 +51,7 @@ function LevelBadge({ level }: { level: MaturityLevel }) {
 function SourceBadge({ source, dataSources, dataReliability }: {
   source: SubdimensionScore['source'];
   dataSources?: string[];
-  dataReliability?: 'real' | 'estimated' | 'manual';
+  dataReliability?: 'real' | 'estimated' | 'manual' | 'insufficient';
 }) {
   // If we have real/estimated info from collection, show that instead
   if (dataReliability === 'real') {

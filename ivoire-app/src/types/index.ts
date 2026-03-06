@@ -29,8 +29,8 @@ export interface SubdimensionScore {
   collectionStatus: CollectionStatus;
   notes?: string;
   isConditional: boolean;
-  /** Whether this data came from a real API vs simulation */
-  dataReliability?: 'real' | 'estimated' | 'manual';
+  /** Whether this data came from a real API, was insufficient, or manual */
+  dataReliability?: 'real' | 'estimated' | 'manual' | 'insufficient';
   /** Which tools/APIs were used */
   dataSources?: string[];
 }
@@ -139,10 +139,36 @@ export interface PageSpeedData {
 }
 
 export interface AppSettings {
+  // ── Existing ────────────────────────────────────────────────────────────
   pageSpeedApiKey: string;
   youtubeApiKey: string;
   apolloApiKey: string;
   emailJSServiceId: string;
   emailJSTemplateId: string;
   emailJSPublicKey: string;
+
+  // ── Reputação Digital — Google Places API ───────────────────────────────
+  // Setup: console.cloud.google.com → APIs → Places API → Enable
+  // Cost: ~$0.017/req — first $200/month free
+  googlePlacesApiKey: string;
+
+  // ── Mídia Paga — Meta Ad Library API ───────────────────────────────────
+  // Get free token at: developers.facebook.com/tools/explorer
+  // Valid ~60 days — renew monthly
+  metaAccessToken: string;
+
+  // ── Presença em Vídeo & Áudio — Spotify API ─────────────────────────────
+  // Setup: developer.spotify.com/dashboard → Create App
+  spotifyClientId: string;
+  spotifyClientSecret: string;
+
+  // ── Mix de Tráfego — SimilarWeb API (enterprise) ────────────────────────
+  // Requires SimilarWeb API plan (separate from web account)
+  // Contact: similarweb.com/corp/solutions/api/
+  similarwebApiKey: string;
+
+  // ── SEO Off-Page — SEMrush API ──────────────────────────────────────────
+  // Requires SEMrush plan with API access
+  // docs.semrush.com/api/
+  semrushApiKey: string;
 }
