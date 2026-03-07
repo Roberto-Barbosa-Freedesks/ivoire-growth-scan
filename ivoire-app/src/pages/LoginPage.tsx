@@ -260,13 +260,13 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div className="font-montserrat" style={{ fontSize: '11px', fontWeight: 700, color: '#595959', letterSpacing: '3px', marginBottom: '32px' }}>
+          <div className="font-montserrat" style={{ fontSize: '11px', fontWeight: 700, color: '#777', letterSpacing: '3px', marginBottom: '32px' }}>
             IVOIRE.COM.BR
           </div>
 
           {/* Official Ivoire logo — PNG assinatura */}
           <img
-            src={`${BASE_URL}ivoire-logo.png`}
+            src={`${BASE_URL}ivoire-logo-yellow.png`}
             alt="Ivoire"
             style={{ width: '220px', height: 'auto', marginBottom: '12px', display: 'block' }}
             onError={(e) => {
@@ -294,7 +294,7 @@ export default function LoginPage() {
 
         {/* Maturity levels */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: '9px', fontFamily: 'Montserrat', fontWeight: 700, color: '#595959', letterSpacing: '2px', marginBottom: '14px' }}>
+          <div style={{ fontSize: '9px', fontFamily: 'Montserrat', fontWeight: 700, color: '#777', letterSpacing: '2px', marginBottom: '14px' }}>
             NÍVEIS DE MATURIDADE
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

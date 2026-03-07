@@ -19,7 +19,7 @@ const STATUS_LABEL: Record<Diagnostic['status'], string> = {
 };
 
 const STATUS_COLOR: Record<Diagnostic['status'], string> = {
-  draft: '#595959',
+  draft: '#777',
   collecting: '#FFFF02',
   manual_input: '#ff9900',
   processing: '#00aaff',
@@ -76,7 +76,7 @@ function StatCard({ label, value, sub, accent, color }: StatCardProps) {
           fontSize: '9px',
           fontFamily: 'Montserrat',
           fontWeight: 700,
-          color: '#595959',
+          color: '#777',
           letterSpacing: '1.5px',
         }}
       >
@@ -96,7 +96,7 @@ function StatCard({ label, value, sub, accent, color }: StatCardProps) {
         <div
           style={{
             fontSize: '11px',
-            color: '#595959',
+            color: '#777',
             fontFamily: 'Arvo',
             marginTop: '2px',
           }}
@@ -227,7 +227,7 @@ export default function DashboardPage() {
             style={{
               fontFamily: 'Arvo, serif',
               fontSize: '13px',
-              color: '#595959',
+              color: '#777',
               marginTop: '8px',
               textTransform: 'capitalize',
             }}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
           label="NÍVEL MÉDIO DA BASE"
           value={avgLevel ?? '—'}
           sub={avgLevel ? 'média ponderada' : 'sem dados suficientes'}
-          color={avgLevel ? LEVEL_COLOR[avgLevel] : '#595959'}
+          color={avgLevel ? LEVEL_COLOR[avgLevel] : '#777'}
         />
         <StatCard
           label="EM ANDAMENTO"
@@ -312,7 +312,7 @@ export default function DashboardPage() {
             <span
               style={{
                 fontSize: '11px',
-                color: '#595959',
+                color: '#777',
                 fontFamily: 'Arvo',
               }}
             >
@@ -415,7 +415,7 @@ export default function DashboardPage() {
                     fontSize: '9px',
                     fontFamily: 'Montserrat',
                     fontWeight: 700,
-                    color: '#595959',
+                    color: '#777',
                     letterSpacing: '1.5px',
                   }}
                 >
@@ -464,7 +464,7 @@ export default function DashboardPage() {
                   <div
                     style={{
                       fontSize: '11px',
-                      color: '#595959',
+                      color: '#777',
                       fontFamily: 'Arvo',
                       display: 'flex',
                       alignItems: 'center',
@@ -530,7 +530,7 @@ export default function DashboardPage() {
                   className="font-mono-display"
                   style={{
                     fontSize: '11px',
-                    color: '#595959',
+                    color: '#777',
                   }}
                 >
                   {formatDate(diag.createdAt)}
@@ -556,7 +556,7 @@ export default function DashboardPage() {
                     <span
                       style={{
                         fontSize: '11px',
-                        color: '#595959',
+                        color: '#777',
                         fontFamily: 'Arvo',
                         fontStyle: 'italic',
                       }}

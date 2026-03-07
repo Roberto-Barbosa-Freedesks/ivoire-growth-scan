@@ -74,7 +74,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
           style={{
             fontFamily: 'Montserrat',
             fontSize: '10px',
-            color: '#595959',
+            color: '#777',
           }}
         >
           / 4.0

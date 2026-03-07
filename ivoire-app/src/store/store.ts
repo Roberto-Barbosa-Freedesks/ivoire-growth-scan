@@ -39,7 +39,6 @@ interface AppState {
 
 const DEFAULT_SETTINGS: AppSettings = {
   pageSpeedApiKey: import.meta.env.VITE_PAGESPEED_API_KEY ?? '',
-  youtubeApiKey: import.meta.env.VITE_YOUTUBE_API_KEY ?? '',
   apolloApiKey: '',
   emailJSServiceId: '',
   emailJSTemplateId: '',

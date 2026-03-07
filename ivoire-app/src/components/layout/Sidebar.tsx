@@ -81,18 +81,12 @@ export default function Sidebar() {
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <div
-          className="font-montserrat"
-          style={{
-            fontSize: '22px',
-            fontWeight: 900,
-            color: '#ffffff',
-            letterSpacing: '2px',
-            lineHeight: 1,
-          }}
-        >
-          IVOIRE
-        </div>
+        <img
+          src={`${import.meta.env.BASE_URL}ivoire-logo-yellow.png`}
+          alt="Ivoire"
+          style={{ width: '120px', height: 'auto', display: 'block', marginBottom: '6px' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
         <div
           className="font-montserrat"
           style={{
@@ -100,7 +94,7 @@ export default function Sidebar() {
             fontWeight: 700,
             color: '#FFFF02',
             letterSpacing: '3px',
-            marginTop: '4px',
+            marginTop: '2px',
           }}
         >
           GROWTH SCAN
@@ -109,7 +103,7 @@ export default function Sidebar() {
           className="font-mono-display"
           style={{
             fontSize: '9px',
-            color: '#595959',
+            color: '#777',
             letterSpacing: '1px',
             marginTop: '6px',
           }}
@@ -135,7 +129,7 @@ export default function Sidebar() {
             {totalCount}
           </div>
           <div
-            style={{ fontSize: '9px', color: '#595959', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
+            style={{ fontSize: '9px', color: '#777', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
           >
             TOTAL
           </div>
@@ -154,7 +148,7 @@ export default function Sidebar() {
             {completedCount}
           </div>
           <div
-            style={{ fontSize: '9px', color: '#595959', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
+            style={{ fontSize: '9px', color: '#777', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
           >
             CONCLUÍDOS
           </div>
@@ -168,7 +162,7 @@ export default function Sidebar() {
             fontSize: '9px',
             fontFamily: 'Montserrat',
             fontWeight: 700,
-            color: '#595959',
+            color: '#777',
             letterSpacing: '1.5px',
             padding: '0 12px',
             marginBottom: '8px',
@@ -199,7 +193,7 @@ export default function Sidebar() {
               >
                 {({ isActive }) => (
                   <>
-                    <span style={{ color: isActive ? '#FFFF02' : '#595959', flexShrink: 0 }}>
+                    <span style={{ color: isActive ? '#FFFF02' : '#777', flexShrink: 0 }}>
                       {item.icon}
                     </span>
                     {item.label}
@@ -324,7 +318,7 @@ export default function Sidebar() {
               <div
                 style={{
                   fontSize: '10px',
-                  color: '#595959',
+                  color: '#777',
                   fontFamily: 'Arvo',
                   textTransform: 'capitalize',
                   whiteSpace: 'nowrap',
@@ -349,7 +343,7 @@ export default function Sidebar() {
             background: 'transparent',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '4px',
-            color: '#595959',
+            color: '#999',
             fontSize: '12px',
             fontFamily: 'Montserrat',
             fontWeight: 500,
@@ -361,7 +355,7 @@ export default function Sidebar() {
             (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,77,77,0.3)';
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.color = '#595959';
+            (e.currentTarget as HTMLButtonElement).style.color = '#999';
             (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)';
           }}
         >

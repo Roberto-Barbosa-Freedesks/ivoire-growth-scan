@@ -82,7 +82,7 @@ function FieldLabel({
           style={{
             fontFamily: 'Arvo, serif',
             fontSize: '11px',
-            color: '#595959',
+            color: '#777',
             margin: '4px 0 0',
             lineHeight: 1.4,
           }}
@@ -122,7 +122,7 @@ function StepProgressBar({
           ? '#00cc66'
           : isActive
           ? '#FFFF02'
-          : '#595959';
+          : '#777';
 
         return (
           <div key={idx} style={{ display: 'flex', alignItems: 'center', flex: idx < steps.length - 1 ? 1 : 'none' }}>
@@ -444,7 +444,7 @@ function Step1({
                 style={{
                   fontFamily: 'Arvo, serif',
                   fontSize: '11px',
-                  color: '#595959',
+                  color: '#777',
                   marginTop: '2px',
                 }}
               >
@@ -536,7 +536,7 @@ function Step2({
             <div key={field.key}>
               <FieldLabel>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ color: '#595959' }}>{field.icon}</span>
+                  <span style={{ color: '#777' }}>{field.icon}</span>
                   {field.label}
                 </span>
               </FieldLabel>
@@ -722,7 +722,7 @@ function Step3({
                   fontSize: '9px',
                   fontFamily: 'Montserrat',
                   fontWeight: 700,
-                  color: '#595959',
+                  color: '#777',
                   letterSpacing: '1.5px',
                   marginBottom: '5px',
                 }}
@@ -872,7 +872,7 @@ export default function NewDiagnosticPage() {
           style={{
             background: 'none',
             border: 'none',
-            color: '#595959',
+            color: '#777',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -886,7 +886,7 @@ export default function NewDiagnosticPage() {
             transition: 'color 0.15s ease',
           }}
           onMouseEnter={e => (e.currentTarget.style.color = '#FFFF02')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#595959')}
+          onMouseLeave={e => (e.currentTarget.style.color = '#777')}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="19" y1="12" x2="5" y2="12" />
@@ -1007,7 +1007,7 @@ export default function NewDiagnosticPage() {
             {/* Step indicator */}
             <span
               className="font-mono-display"
-              style={{ fontSize: '11px', color: '#595959' }}
+              style={{ fontSize: '11px', color: '#777' }}
             >
               {currentStep} / {TOTAL_STEPS}
             </span>

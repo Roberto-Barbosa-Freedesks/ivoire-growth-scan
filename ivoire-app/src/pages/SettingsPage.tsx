@@ -35,21 +35,6 @@ const INTEGRATIONS: Integration[] = [
     placeholder: 'AIzaSy...',
   },
   {
-    key: 'youtubeApiKey',
-    label: 'YouTube Data API v3',
-    category: 'Vídeo & Áudio',
-    subdimensions: ['Presença em Vídeo & Áudio'],
-    cost: 'Gratuito — 10.000 unidades/dia',
-    status: 'free',
-    setupUrl: 'https://console.cloud.google.com/apis/library/youtube.googleapis.com',
-    setupSteps: [
-      'Acesse console.cloud.google.com',
-      'Ative a "YouTube Data API v3"',
-      'Vá em Credenciais → Criar credencial → Chave de API',
-    ],
-    placeholder: 'AIzaSy...',
-  },
-  {
     key: 'googlePlacesApiKey',
     label: 'Google Places API',
     category: 'Reputação Digital',

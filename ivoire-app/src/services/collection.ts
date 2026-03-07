@@ -15,7 +15,7 @@ import { scoreTechDetection } from './pagespeed';
 import type { ScrapedPageData } from './htmlScraper';
 import { analyzeSeoOnPage } from './seoOnPage';
 import { analyzeSemanticaGeo } from './semanticaGeo';
-import { fetchYouTubeChannelStats, scoreYouTubePresence } from './youtube';
+import { fetchYoutubeChannel } from './apifyYoutube';
 import { searchMercadoLivre } from './mercadolivre';
 import { fetchGooglePlaces } from './googlePlaces';
 import { fetchMetaAds } from './metaAds';
@@ -228,47 +228,39 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // PRESENÇA EM VÍDEO & ÁUDIO — real via YouTube API + Spotify API
+    // PRESENÇA EM VÍDEO & ÁUDIO — scraping via Apify (YouTube + TikTok)
     // ────────────────────────────────────────────────────────────────────
     case 'presenca_video_audio': {
       const youtubeUrl = input.youtube;
-      const ytApiKey = settings.youtubeApiKey;
+      const apifyTokenYt = settings.apifyToken ?? '';
       const dataSources: string[] = [];
 
-      // YouTube
+      // YouTube via Apify scraping
       let ytScore = 1;
       let ytData: Record<string, unknown> = { youtubeChannelFound: false };
 
-      if (youtubeUrl && ytApiKey) {
-        try {
-          const ytStats = await fetchYouTubeChannelStats(youtubeUrl, ytApiKey);
-          if (ytStats) {
-            ytScore = scoreYouTubePresence(ytStats, true);
-            ytData = {
-              youtubeChannelFound: true,
-              youtubeChannelTitle: ytStats.title,
-              youtubeSubscribers: ytStats.subscriberCount,
-              youtubeVideos: ytStats.videoCount,
-              youtubeViews: ytStats.viewCount,
-              youtubeCustomUrl: ytStats.customUrl,
-              youtubePublishedAt: ytStats.publishedAt,
-            };
-            dataSources.push('YouTube Data API v3');
-          } else {
-            ytData = { youtubeChannelFound: false, note: 'Canal não encontrado via YouTube API' };
-          }
-        } catch {
-          ytData = { youtubeChannelFound: null, note: 'Erro ao consultar YouTube API' };
-        }
-      } else if (youtubeUrl && !ytApiKey) {
+      if (youtubeUrl && apifyTokenYt) {
+        const yt = await fetchYoutubeChannel(youtubeUrl, apifyTokenYt);
+        ytScore = yt.score;
+        ytData = {
+          youtubeChannelFound: yt.found,
+          youtubeChannelTitle: yt.channelTitle,
+          youtubeChannelUrl: yt.channelUrl,
+          youtubeSubscribers: yt.subscribers,
+          youtubeVideos: yt.videoCount,
+          youtubeViews: yt.viewCount,
+          youtubeVerified: yt.isVerified,
+          youtubeFindings: yt.findings,
+        };
+        if (yt.dataSources.length) dataSources.push(...yt.dataSources);
+      } else if (youtubeUrl && !apifyTokenYt) {
         ytData = {
           youtubeChannelFound: true,
           youtubeChannelUrl: youtubeUrl,
-          youtubeSubscribers: null,
-          note: 'URL de YouTube fornecida — configure YouTube API Key para obter métricas reais',
+          note: 'URL de YouTube fornecida — configure Apify Token para obter métricas reais',
         };
         ytScore = 2;
-        dataSources.push('URL fornecida pelo usuário (sem métricas — configure YouTube API Key)');
+        dataSources.push('URL fornecida pelo usuário (sem métricas — configure Apify Token)');
       }
 
       // TikTok via Apify
@@ -291,8 +283,8 @@ export async function collectSubdimension(
       // No data at all
       if (dataSources.length === 0 && !tiktokUrl) {
         return insufficient(
-          'YouTube API Key não configurada e URL de YouTube não fornecida. TikTok não configurado.',
-          'youtubeApiKey + apifyToken'
+          'URL de YouTube não fornecida e Apify Token não configurado. TikTok não configurado.',
+          'apifyToken'
         );
       }
 

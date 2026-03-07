@@ -7,7 +7,7 @@
   --color-white: #ffffff;
   --color-yellow: #FFFF02;
   --color-gray-600: #999999;
-  --color-gray-700: #595959;
+  --color-gray-700: #777;
   --color-gray-400: #B7B7B7;
   --color-gray-300: #D9D9D9;
   --color-black: #000000;
@@ -26,7 +26,7 @@ html, body, #root {
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #1a1a1a; }
-::-webkit-scrollbar-thumb { background: #595959; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #777; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #999999; }
 
 .font-montserrat { font-family: 'Montserrat', sans-serif; }
@@ -126,7 +126,7 @@ html, body, #root {
   transition: border-color 0.2s ease;
 }
 .ivoire-input:focus { border-color: #FFFF02; }
-.ivoire-input::placeholder { color: #595959; }
+.ivoire-input::placeholder { color: #777; }
 
 .ivoire-select {
   background: rgba(255, 255, 255, 0.05);

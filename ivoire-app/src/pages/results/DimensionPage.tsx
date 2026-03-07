@@ -233,12 +233,18 @@ function TrafficPie({ channels }: { channels: Record<string, number> }) {
   );
 }
 
+function decodeHTMLEntities(str: string): string {
+  const txt = document.createElement('textarea');
+  txt.innerHTML = str;
+  return txt.value;
+}
+
 function formatRawValue(value: unknown): string {
   if (value === null || value === undefined) return 'N/A';
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
-  if (Array.isArray(value)) { const f = value.filter(Boolean); return f.length > 0 ? f.join(', ') : 'N/A'; }
+  if (Array.isArray(value)) { const f = value.filter(Boolean); return f.length > 0 ? f.map(i => decodeHTMLEntities(String(i))).join(', ') : 'N/A'; }
   if (typeof value === 'number') return Number.isInteger(value) ? String(value) : value.toFixed(2);
-  return String(value);
+  return decodeHTMLEntities(String(value));
 }
 function formatKey(key: string): string {
   return key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();

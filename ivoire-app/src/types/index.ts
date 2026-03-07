@@ -141,7 +141,6 @@ export interface PageSpeedData {
 export interface AppSettings {
   // ── Existing ────────────────────────────────────────────────────────────
   pageSpeedApiKey: string;
-  youtubeApiKey: string;
   apolloApiKey: string;
   emailJSServiceId: string;
   emailJSTemplateId: string;
