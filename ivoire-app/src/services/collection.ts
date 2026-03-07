@@ -19,7 +19,6 @@ import { fetchYouTubeChannelStats, scoreYouTubePresence } from './youtube';
 import { searchMercadoLivre } from './mercadolivre';
 import { fetchGooglePlaces } from './googlePlaces';
 import { fetchMetaAds } from './metaAds';
-import { searchSpotifyPodcast } from './spotify';
 import { analyzeUxCro } from './uxCroAnalysis';
 import { analyzeMixTrafego } from './mixTrafego';
 import type { TrafficChannelSignals } from './mixTrafego';
@@ -272,37 +271,6 @@ export async function collectSubdimension(
         dataSources.push('URL fornecida pelo usuário (sem métricas — configure YouTube API Key)');
       }
 
-      // Spotify
-      let podcastData: Record<string, unknown> = {};
-      let podcastScore = 1;
-
-      if (settings.spotifyClientId && settings.spotifyClientSecret) {
-        try {
-          const spotResult = await searchSpotifyPodcast(
-            companyName,
-            settings.spotifyClientId,
-            settings.spotifyClientSecret
-          );
-          podcastData = {
-            podcastFound: spotResult.found,
-            podcastName: spotResult.topShow?.name ?? null,
-            podcastEpisodes: spotResult.topShow?.totalEpisodes ?? null,
-            podcastPublisher: spotResult.topShow?.publisher ?? null,
-            podcastImageUrl: spotResult.topShow?.imageUrl ?? null,
-            podcastFindings: spotResult.findings,
-          };
-          if (spotResult.found) podcastScore = spotResult.score;
-          dataSources.push('Spotify Web API');
-        } catch {
-          podcastData = { podcastFound: null, podcastNote: 'Erro ao consultar Spotify API' };
-        }
-      } else {
-        podcastData = {
-          podcastFound: null,
-          podcastNote: 'Spotify Client ID/Secret não configurados — configure em Configurações → Integrações',
-        };
-      }
-
       // TikTok via Apify
       let tiktokScore = 1;
       let tiktokData: Record<string, unknown> = {};
@@ -323,16 +291,16 @@ export async function collectSubdimension(
       // No data at all
       if (dataSources.length === 0 && !tiktokUrl) {
         return insufficient(
-          'YouTube API Key não configurada e URL de YouTube não fornecida. Spotify e TikTok não configurados.',
-          'youtubeApiKey + spotifyClientId/spotifyClientSecret + apifyToken'
+          'YouTube API Key não configurada e URL de YouTube não fornecida. TikTok não configurado.',
+          'youtubeApiKey + apifyToken'
         );
       }
 
-      const finalScore = Math.max(ytScore, podcastScore, tiktokScore);
+      const finalScore = Math.max(ytScore, tiktokScore);
 
       return {
         score: finalScore,
-        data: { ...ytData, ...podcastData, ...tiktokData },
+        data: { ...ytData, ...tiktokData },
         source: 'auto',
         dataReliability: 'real',
         dataSources,

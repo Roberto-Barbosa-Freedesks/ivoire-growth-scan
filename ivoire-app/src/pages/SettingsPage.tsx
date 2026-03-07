@@ -83,33 +83,6 @@ const INTEGRATIONS: Integration[] = [
     placeholder: 'EAABsbCs4...',
     isTextarea: false,
   },
-  {
-    key: 'spotifyClientId',
-    label: 'Spotify Client ID',
-    category: 'Vídeo & Áudio',
-    subdimensions: ['Presença em Vídeo & Áudio (Podcast)'],
-    cost: 'Gratuito — Spotify Developer',
-    status: 'free',
-    setupUrl: 'https://developer.spotify.com/dashboard',
-    setupSteps: [
-      'Acesse developer.spotify.com/dashboard',
-      'Crie um App (nome qualquer)',
-      'Copie o Client ID e Client Secret',
-    ],
-    placeholder: '1a2b3c4d5e6f...',
-  },
-  {
-    key: 'spotifyClientSecret',
-    label: 'Spotify Client Secret',
-    category: 'Vídeo & Áudio',
-    subdimensions: ['Presença em Vídeo & Áudio (Podcast)'],
-    cost: 'Gratuito — mesmo App do Client ID',
-    status: 'free',
-    setupUrl: 'https://developer.spotify.com/dashboard',
-    setupSteps: ['No mesmo App do Spotify Dashboard, clique em "Show Client Secret"'],
-    placeholder: 'a1b2c3d4e5f6...',
-    isPassword: true,
-  },
   // ── Paid / Enterprise ─────────────────────────────────────────────────
   {
     key: 'similarwebApiKey',

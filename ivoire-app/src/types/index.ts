@@ -157,11 +157,6 @@ export interface AppSettings {
   // Valid ~60 days — renew monthly
   metaAccessToken: string;
 
-  // ── Presença em Vídeo & Áudio — Spotify API ─────────────────────────────
-  // Setup: developer.spotify.com/dashboard → Create App
-  spotifyClientId: string;
-  spotifyClientSecret: string;
-
   // ── Mix de Tráfego — SimilarWeb API (enterprise) ────────────────────────
   // Requires SimilarWeb API plan (separate from web account)
   // Contact: similarweb.com/corp/solutions/api/
