@@ -33,6 +33,7 @@ export interface ScrapedPageData {
   imagesWithAlt: number;
   internalLinks: number;
   externalLinks: number;
+  socialLinks: string[]; // social platform names found (e.g. ['Instagram', 'LinkedIn'])
   hasAboutPage: boolean;
   hasContactPage: boolean;
   rawHtmlLength: number;
@@ -275,6 +276,21 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
   const hasAboutPage = /href=["'][^"']*(?:about|sobre|quem-somos|equipe|team)[^"']*["']/i.test(html);
   const hasContactPage = /href=["'][^"']*(?:contact|contato|fale-conosco)[^"']*["']/i.test(html);
 
+  // Social links — detect presence of major social platform links
+  const SOCIAL_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
+    { pattern: /instagram\.com\//i, name: 'Instagram' },
+    { pattern: /facebook\.com\//i, name: 'Facebook' },
+    { pattern: /linkedin\.com\//i, name: 'LinkedIn' },
+    { pattern: /twitter\.com\/|x\.com\//i, name: 'Twitter/X' },
+    { pattern: /youtube\.com\//i, name: 'YouTube' },
+    { pattern: /tiktok\.com\//i, name: 'TikTok' },
+    { pattern: /pinterest\.com\//i, name: 'Pinterest' },
+    { pattern: /wa\.me\/|whatsapp\.com\//i, name: 'WhatsApp' },
+  ];
+  const socialLinks = SOCIAL_PATTERNS
+    .filter(({ pattern }) => pattern.test(html))
+    .map(({ name }) => name);
+
   return {
     url,
     title,
@@ -304,6 +320,7 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
     imagesWithAlt,
     internalLinks,
     externalLinks,
+    socialLinks,
     hasAboutPage,
     hasContactPage,
     rawHtmlLength: html.length,

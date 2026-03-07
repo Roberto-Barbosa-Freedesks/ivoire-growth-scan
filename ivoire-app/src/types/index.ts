@@ -171,4 +171,9 @@ export interface AppSettings {
   // Requires SEMrush plan with API access
   // docs.semrush.com/api/
   semrushApiKey: string;
+
+  // ── SEO Off-Page — Open PageRank (free, no credit card) ─────────────────
+  // Free key at: openpagerank.com (10,000 calls/hour)
+  // Backlink authority score 0–10 based on Common Crawl dataset
+  openPageRankApiKey: string;
 }

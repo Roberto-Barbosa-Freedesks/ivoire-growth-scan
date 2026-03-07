@@ -21,6 +21,9 @@ import { fetchGooglePlaces } from './googlePlaces';
 import { fetchMetaAds } from './metaAds';
 import { searchSpotifyPodcast } from './spotify';
 import { analyzeUxCro } from './uxCroAnalysis';
+import { analyzeMixTrafego } from './mixTrafego';
+import type { TrafficChannelSignals } from './mixTrafego';
+import { analyzeSeoOffpage } from './seoOffpage';
 
 export interface CollectionResult {
   score: number; // 1–4
@@ -314,14 +317,48 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // MIX DE TRÁFEGO — requires SimilarWeb API (not available)
+    // MIX DE TRÁFEGO — Tranco rank + traffic channel inference
+    // SimilarWeb endpoint: DEAD since late 2024 (CloudFront 403)
+    // Cloudflare Radar: needs Authorization header — allorigins cannot forward it
+    // Solution: Tranco list (free, validated, multi-source academic ranking)
+    //           + channel mix inferred from tech stack + HTML signals
     // ────────────────────────────────────────────────────────────────────
     case 'mix_trafego': {
-      return insufficient(
-        'Mix de Tráfego requer SimilarWeb API (enterprise) ou SEMrush Traffic Analytics API. ' +
-        'Nenhuma dessas APIs está configurada. A conta SimilarWeb (seo@ivoire.com.br) é acesso web — API requer contratação separada.',
-        'similarwebApiKey (plano API SimilarWeb) ou semrushApiKey (Traffic Analytics)'
-      );
+      const tech = context.tech;
+      const scraped = context.scraped;
+
+      // Build traffic channel signals from available context
+      const signals: TrafficChannelSignals = {
+        hasGa4: tech?.ga4Installed ?? false,
+        hasGtm: tech?.gtmInstalled ?? false,
+        hasMetaPixel: tech?.metaPixel ?? false,
+        hasLinkedinTag: tech?.linkedinInsightTag ?? false,
+        hasTiktokPixel: tech?.tiktokPixel ?? false,
+        hasGoogleAdsScript: tech?.thirdPartyDomains?.some((d) =>
+          d.includes('googleadservices') || d.includes('googlesyndication') || d.includes('doubleclick')
+        ) ?? false,
+        socialLinksFound: scraped?.socialLinks ?? [],
+        internalLinksCount: scraped?.internalLinks ?? 0,
+        hasSeoSignals: !!(scraped?.title && scraped?.metaDescription),
+      };
+
+      const result = await analyzeMixTrafego(siteUrl, signals);
+
+      return {
+        score: result.score,
+        data: {
+          trancoRank: result.trancoRank,
+          trafficBucket: result.trafficBucket,
+          activeChannels: result.activeChannels,
+          channelMix: result.channelMix,
+          findings: result.findings,
+          note: 'Volume de visitas: SimilarWeb API enterprise necessária para dados precisos. ' +
+            'Tranco rank é um índice de popularidade multi-fonte (Cloudflare Radar + Cisco Umbrella + Chrome UX).',
+        },
+        source: 'auto',
+        dataReliability: 'real',
+        dataSources: result.dataSources,
+      };
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -398,14 +435,42 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // SEO OFF-PAGE — requires SEMrush or Ahrefs API
+    // SEO OFF-PAGE — RDAP domain age + robots.txt + sitemap + Open PageRank
+    // No free real-time backlink API with CORS exists in 2025-2026.
+    // Open PageRank (Common Crawl-derived) is the best free alternative.
+    // Free key at: openpagerank.com (10,000 calls/hour)
     // ────────────────────────────────────────────────────────────────────
     case 'seo_offpage': {
-      return insufficient(
-        'SEO Off-Page (backlinks, authority score) requer API do SEMrush ou Ahrefs. ' +
-        'Nenhuma API de backlinks está configurada.',
-        'semrushApiKey (SEMrush) ou ahrefsApiKey (Ahrefs)'
+      const internalLinks = context.scraped?.internalLinks ?? 0;
+      const result = await analyzeSeoOffpage(
+        siteUrl,
+        settings.openPageRankApiKey ?? '',
+        internalLinks
       );
+      return {
+        score: result.score,
+        data: {
+          domainAge: result.domainAge,
+          registrationDate: result.registrationDate,
+          registrar: result.registrar,
+          hasRobotsTxt: result.hasRobotsTxt,
+          robotsTxtSitemapDirective: result.robotsTxtSitemapDirective,
+          robotsDisallowAll: result.robotsDisallowAll,
+          hasSitemapXml: result.hasSitemapXml,
+          sitemapUrlCount: result.sitemapUrlCount,
+          openPageRank: result.openPageRank,
+          openPageRankGlobal: result.openPageRankGlobal,
+          internalLinksCount: result.internalLinksCount,
+          isHttps: result.isHttps,
+          findings: result.findings,
+          note: result.openPageRank === null
+            ? 'Configure openPageRankApiKey (gratuito em openpagerank.com) para obter score de autoridade de backlinks baseado em Common Crawl.'
+            : undefined,
+        },
+        source: 'auto',
+        dataReliability: 'real',
+        dataSources: result.dataSources,
+      };
     }
 
     // ────────────────────────────────────────────────────────────────────

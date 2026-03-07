@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   spotifyClientSecret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET ?? '',
   similarwebApiKey: import.meta.env.VITE_SIMILARWEB_API_KEY ?? '',
   semrushApiKey: import.meta.env.VITE_SEMRUSH_API_KEY ?? '',
+  openPageRankApiKey: import.meta.env.VITE_OPEN_PAGERANK_API_KEY ?? '',
 };
 
 // Pre-seeded admin user (password: ivoire2024)
