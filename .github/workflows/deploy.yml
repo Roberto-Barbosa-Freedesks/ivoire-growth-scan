@@ -37,6 +37,14 @@ jobs:
 
       - name: Build
         working-directory: ivoire-app
+        env:
+          VITE_GOOGLE_PLACES_API_KEY: ${{ secrets.VITE_GOOGLE_PLACES_API_KEY }}
+          VITE_OPEN_PAGERANK_API_KEY: ${{ secrets.VITE_OPEN_PAGERANK_API_KEY }}
+          VITE_PAGESPEED_API_KEY: ${{ secrets.VITE_PAGESPEED_API_KEY }}
+          VITE_YOUTUBE_API_KEY: ${{ secrets.VITE_YOUTUBE_API_KEY }}
+          VITE_META_ACCESS_TOKEN: ${{ secrets.VITE_META_ACCESS_TOKEN }}
+          VITE_SPOTIFY_CLIENT_ID: ${{ secrets.VITE_SPOTIFY_CLIENT_ID }}
+          VITE_SPOTIFY_CLIENT_SECRET: ${{ secrets.VITE_SPOTIFY_CLIENT_SECRET }}
         run: npm run build
 
       - name: Setup Pages
