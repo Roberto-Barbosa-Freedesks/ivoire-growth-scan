@@ -309,6 +309,22 @@ export const useAppStore = create<AppState>()(
         pageSpeedApiKey: state.pageSpeedApiKey,
         settings: state.settings,
       }),
+      // Env vars (baked in at build time) always win over empty persisted values.
+      // This ensures that GitHub Secrets injected via VITE_* are always active,
+      // even when the user has an older localStorage state with empty strings.
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AppState>;
+        const mergedSettings = { ...currentState.settings };
+        if (persisted.settings) {
+          (Object.keys(currentState.settings) as Array<keyof AppSettings>).forEach((k) => {
+            const envVal = currentState.settings[k]; // value from DEFAULT_SETTINGS (env vars)
+            const storedVal = persisted.settings![k]; // value from localStorage
+            // Use env var if set; otherwise fall back to what user manually saved
+            mergedSettings[k] = envVal || storedVal || '';
+          });
+        }
+        return { ...currentState, ...persisted, settings: mergedSettings };
+      },
     }
   )
 );
