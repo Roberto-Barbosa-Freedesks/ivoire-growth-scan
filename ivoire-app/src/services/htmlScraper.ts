@@ -33,7 +33,8 @@ export interface ScrapedPageData {
   imagesWithAlt: number;
   internalLinks: number;
   externalLinks: number;
-  socialLinks: string[]; // social platform names found (e.g. ['Instagram', 'LinkedIn'])
+  socialLinks: string[];        // social platform names found (e.g. ['Instagram', 'LinkedIn'])
+  socialProfileUrls: Record<string, string>; // e.g. { Instagram: 'https://instagram.com/brand' }
   hasAboutPage: boolean;
   hasContactPage: boolean;
   rawHtmlLength: number;
@@ -276,20 +277,29 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
   const hasAboutPage = /href=["'][^"']*(?:about|sobre|quem-somos|equipe|team)[^"']*["']/i.test(html);
   const hasContactPage = /href=["'][^"']*(?:contact|contato|fale-conosco)[^"']*["']/i.test(html);
 
-  // Social links — detect presence of major social platform links
-  const SOCIAL_PATTERNS: Array<{ pattern: RegExp; name: string }> = [
-    { pattern: /instagram\.com\//i, name: 'Instagram' },
-    { pattern: /facebook\.com\//i, name: 'Facebook' },
-    { pattern: /linkedin\.com\//i, name: 'LinkedIn' },
-    { pattern: /twitter\.com\/|x\.com\//i, name: 'Twitter/X' },
-    { pattern: /youtube\.com\//i, name: 'YouTube' },
-    { pattern: /tiktok\.com\//i, name: 'TikTok' },
-    { pattern: /pinterest\.com\//i, name: 'Pinterest' },
-    { pattern: /wa\.me\/|whatsapp\.com\//i, name: 'WhatsApp' },
+  // Social links — detect presence and extract first URL per platform
+  const SOCIAL_PATTERNS: Array<{ urlPattern: RegExp; name: string }> = [
+    { urlPattern: /https?:\/\/(?:www\.)?instagram\.com\/[^\s"'<>]+/i, name: 'Instagram' },
+    { urlPattern: /https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>]+/i, name: 'Facebook' },
+    { urlPattern: /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[^\s"'<>]+/i, name: 'LinkedIn' },
+    { urlPattern: /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[^\s"'<>]+/i, name: 'Twitter/X' },
+    { urlPattern: /https?:\/\/(?:www\.)?youtube\.com\/[^\s"'<>]+/i, name: 'YouTube' },
+    { urlPattern: /https?:\/\/(?:www\.)?tiktok\.com\/@[^\s"'<>]+/i, name: 'TikTok' },
+    { urlPattern: /https?:\/\/(?:www\.)?pinterest\.com\/[^\s"'<>]+/i, name: 'Pinterest' },
+    { urlPattern: /https?:\/\/wa\.me\/[^\s"'<>]+/i, name: 'WhatsApp' },
   ];
-  const socialLinks = SOCIAL_PATTERNS
-    .filter(({ pattern }) => pattern.test(html))
-    .map(({ name }) => name);
+
+  const socialLinks: string[] = [];
+  const socialProfileUrls: Record<string, string> = {};
+
+  for (const { urlPattern, name } of SOCIAL_PATTERNS) {
+    const match = html.match(urlPattern);
+    if (match) {
+      socialLinks.push(name);
+      // Clean URL: remove trailing punctuation/quotes
+      socialProfileUrls[name] = match[0].replace(/['">\s]+$/, '');
+    }
+  }
 
   return {
     url,
@@ -321,6 +331,7 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
     internalLinks,
     externalLinks,
     socialLinks,
+    socialProfileUrls,
     hasAboutPage,
     hasContactPage,
     rawHtmlLength: html.length,

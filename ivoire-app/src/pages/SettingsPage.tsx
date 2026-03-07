@@ -158,6 +158,25 @@ const INTEGRATIONS: Integration[] = [
     ],
     placeholder: 'Sem acesso configurado',
   },
+  // ── Apify (scraping platform) ─────────────────────────────────────────
+  {
+    key: 'apifyToken',
+    label: 'Apify Token',
+    category: 'Scrapers & Automação',
+    subdimensions: ['Mix de Tráfego (SimilarWeb)', 'SEO Off-Page (SEMrush)', 'Reputação VoC (Google Maps 50+ avaliações)', 'Mídia Paga (Facebook/Instagram)', 'Vídeo & Áudio (TikTok)'],
+    cost: 'Gratuito — $5 USD/mês (créditos inclusos) ≈ 55 diagnósticos completos',
+    status: 'free',
+    setupUrl: 'https://console.apify.com/account/integrations',
+    setupSteps: [
+      'Acesse console.apify.com com sua conta beto.freedesks@gmail.com',
+      'Vá em Settings → Integrations → API tokens',
+      'Clique em "Create new token" e copie o token gerado',
+      'Cole aqui — substitui SimilarWeb, SEMrush e outras APIs pagas',
+      'Crédito gratuito de $5/mês incluso — sem cartão necessário para uso básico',
+    ],
+    placeholder: 'apify_api_...',
+    isPassword: true,
+  },
   // ── Apollo (contatos comerciais) ──────────────────────────────────────
   {
     key: 'apolloApiKey',
@@ -177,6 +196,7 @@ const INTEGRATIONS: Integration[] = [
 ];
 
 const CATEGORY_ORDER = [
+  'Scrapers & Automação',
   'Performance & Tracking',
   'Vídeo & Áudio',
   'Reputação Digital',

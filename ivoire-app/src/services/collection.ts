@@ -24,6 +24,12 @@ import { analyzeUxCro } from './uxCroAnalysis';
 import { analyzeMixTrafego } from './mixTrafego';
 import type { TrafficChannelSignals } from './mixTrafego';
 import { analyzeSeoOffpage } from './seoOffpage';
+import { fetchSimilarweb } from './apifySimilarweb';
+import { fetchSemrush } from './apifySemrush';
+import { fetchGoogleMapsEnriched } from './apifyGoogleMaps';
+import { fetchTiktokProfile } from './apifyTiktok';
+import { fetchFacebookPage } from './apifyFacebook';
+import { fetchInstagramProfile } from './apifyInstagram';
 
 export interface CollectionResult {
   score: number; // 1–4
@@ -297,19 +303,36 @@ export async function collectSubdimension(
         };
       }
 
+      // TikTok via Apify
+      let tiktokScore = 1;
+      let tiktokData: Record<string, unknown> = {};
+      const apifyToken = settings.apifyToken ?? '';
+      const tiktokUrl = input.tiktok ?? context.scraped?.socialProfileUrls?.['TikTok'];
+      if (apifyToken && tiktokUrl) {
+        const tt = await fetchTiktokProfile(tiktokUrl, apifyToken);
+        tiktokScore = tt.score;
+        tiktokData = {
+          tiktokFound: tt.found, tiktokUsername: tt.username,
+          tiktokFollowers: tt.followers, tiktokVideos: tt.videoCount,
+          tiktokLikes: tt.likes, tiktokVerified: tt.verified,
+          tiktokFindings: tt.findings,
+        };
+        if (tt.dataSources.length) dataSources.push(...tt.dataSources);
+      }
+
       // No data at all
-      if (dataSources.length === 0) {
+      if (dataSources.length === 0 && !tiktokUrl) {
         return insufficient(
-          'YouTube API Key não configurada e URL de YouTube não fornecida. Spotify Client ID/Secret não configurados.',
-          'youtubeApiKey + spotifyClientId/spotifyClientSecret'
+          'YouTube API Key não configurada e URL de YouTube não fornecida. Spotify e TikTok não configurados.',
+          'youtubeApiKey + spotifyClientId/spotifyClientSecret + apifyToken'
         );
       }
 
-      const finalScore = Math.max(ytScore, podcastScore);
+      const finalScore = Math.max(ytScore, podcastScore, tiktokScore);
 
       return {
         score: finalScore,
-        data: { ...ytData, ...podcastData },
+        data: { ...ytData, ...podcastData, ...tiktokData },
         source: 'auto',
         dataReliability: 'real',
         dataSources,
@@ -317,17 +340,38 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // MIX DE TRÁFEGO — Tranco rank + traffic channel inference
-    // SimilarWeb endpoint: DEAD since late 2024 (CloudFront 403)
-    // Cloudflare Radar: needs Authorization header — allorigins cannot forward it
-    // Solution: Tranco list (free, validated, multi-source academic ranking)
-    //           + channel mix inferred from tech stack + HTML signals
+    // MIX DE TRÁFEGO — SimilarWeb via Apify (primary) + Tranco (fallback)
     // ────────────────────────────────────────────────────────────────────
     case 'mix_trafego': {
       const tech = context.tech;
       const scraped = context.scraped;
+      const apifyToken = settings.apifyToken ?? '';
 
-      // Build traffic channel signals from available context
+      // Primary: SimilarWeb via Apify (real monthly visits + channel breakdown)
+      if (apifyToken) {
+        const swResult = await fetchSimilarweb(siteUrl, apifyToken);
+        if (swResult.found) {
+          return {
+            score: swResult.score,
+            data: {
+              monthlyVisits: swResult.monthlyVisits,
+              globalRank: swResult.globalRank,
+              bounceRate: swResult.bounceRate,
+              avgVisitDuration: swResult.avgVisitDuration,
+              pagesPerVisit: swResult.pagesPerVisit,
+              channelMix: swResult.trafficSources,
+              topCountries: swResult.topCountries,
+              findings: swResult.findings,
+            },
+            source: 'auto',
+            dataReliability: 'real',
+            dataSources: swResult.dataSources,
+          };
+        }
+        // SimilarWeb returned no data (site below threshold) — fall through to Tranco
+      }
+
+      // Fallback: Tranco rank + channel inference from tech/HTML
       const signals: TrafficChannelSignals = {
         hasGa4: tech?.ga4Installed ?? false,
         hasGtm: tech?.gtmInstalled ?? false,
@@ -341,9 +385,7 @@ export async function collectSubdimension(
         internalLinksCount: scraped?.internalLinks ?? 0,
         hasSeoSignals: !!(scraped?.title && scraped?.metaDescription),
       };
-
       const result = await analyzeMixTrafego(siteUrl, signals);
-
       return {
         score: result.score,
         data: {
@@ -351,9 +393,12 @@ export async function collectSubdimension(
           trafficBucket: result.trafficBucket,
           activeChannels: result.activeChannels,
           channelMix: result.channelMix,
-          findings: result.findings,
-          note: 'Volume de visitas: SimilarWeb API enterprise necessária para dados precisos. ' +
-            'Tranco rank é um índice de popularidade multi-fonte (Cloudflare Radar + Cisco Umbrella + Chrome UX).',
+          findings: [
+            ...(apifyToken ? ['⚠️ SimilarWeb: site abaixo do limiar de dados (<50k visitas/mês)'] : [
+              '⚠️ Configure Apify Token em Configurações para obter dados reais de tráfego via SimilarWeb',
+            ]),
+            ...result.findings,
+          ],
         },
         source: 'auto',
         dataReliability: 'real',
@@ -362,42 +407,67 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // MÍDIA PAGA & CRIATIVOS — real via Meta Ad Library API
+    // MÍDIA PAGA & CRIATIVOS — Meta Ads (pago) + Facebook/Instagram orgânico via Apify
     // ────────────────────────────────────────────────────────────────────
     case 'midia_paga_criativos': {
-      if (!settings.metaAccessToken) {
+      const apifyToken = settings.apifyToken ?? '';
+      if (!settings.metaAccessToken && !apifyToken) {
         return insufficient(
-          'Meta Access Token não configurado. Obtenha GRATUITAMENTE em: developers.facebook.com/tools/explorer',
-          'metaAccessToken'
+          'Meta Access Token e Apify Token não configurados. Configure ao menos um para analisar mídia paga e presença social.',
+          'metaAccessToken ou apifyToken'
         );
       }
-      const result = await fetchMetaAds(companyName, siteUrl, settings.metaAccessToken);
-      if (result.error) {
-        return {
-          score: 1,
-          data: { error: result.error, findings: result.findings },
-          source: 'insufficient',
-          dataReliability: 'insufficient',
-          dataSources: ['Meta Ad Library API'],
-          error: result.error,
-        };
+
+      const dataSources: string[] = [];
+      const allFindings: string[] = [];
+      let paidScore = 1;
+      let paidData: Record<string, unknown> = {};
+      let fbScore = 1; let fbData: Record<string, unknown> = {};
+      let igScore = 1; let igData: Record<string, unknown> = {};
+
+      // Paid: Meta Ad Library
+      if (settings.metaAccessToken) {
+        const adsResult = await fetchMetaAds(companyName, siteUrl, settings.metaAccessToken);
+        if (!adsResult.error) {
+          paidScore = adsResult.score;
+          paidData = {
+            adsFound: adsResult.adsFound, totalActiveAds: adsResult.totalAds,
+            platforms: adsResult.platforms, formats: adsResult.formats,
+            hasVideoAds: adsResult.hasVideoAds, hasImageAds: adsResult.hasImageAds,
+            adSamples: adsResult.activeAds.slice(0, 5),
+          };
+          allFindings.push(...adsResult.findings);
+          dataSources.push('Meta Ad Library API (gratuito)');
+        }
+      } else {
+        allFindings.push('⚠️ Meta Access Token não configurado — anúncios pagos não verificados');
       }
+
+      // Organic social via Apify
+      if (apifyToken) {
+        const fbUrl = context.scraped?.socialProfileUrls?.['Facebook'];
+        const fb = await fetchFacebookPage(fbUrl, companyName, apifyToken);
+        fbScore = fb.score;
+        fbData = { facebook: { found: fb.found, followers: fb.followers, rating: fb.rating, verified: fb.isVerified, categories: fb.categories } };
+        allFindings.push(...fb.findings);
+        if (fb.dataSources.length) dataSources.push(...fb.dataSources);
+
+        const igUrl = input.instagram ?? context.scraped?.socialProfileUrls?.['Instagram'];
+        if (igUrl) {
+          const ig = await fetchInstagramProfile(igUrl, apifyToken);
+          igScore = ig.score;
+          igData = { instagram: { found: ig.found, followers: ig.followers, posts: ig.posts, verified: ig.isVerified, websiteInBio: ig.websiteInBio } };
+          allFindings.push(...ig.findings);
+          if (ig.dataSources.length) dataSources.push(...ig.dataSources);
+        }
+      }
+
       return {
-        score: result.score,
-        data: {
-          adsFound: result.adsFound,
-          totalActiveAds: result.totalAds,
-          platforms: result.platforms,
-          formats: result.formats,
-          hasVideoAds: result.hasVideoAds,
-          hasImageAds: result.hasImageAds,
-          pagesFound: result.pagesFound,
-          adSamples: result.activeAds.slice(0, 5),
-          findings: result.findings,
-        },
+        score: Math.max(paidScore, fbScore, igScore),
+        data: { ...paidData, ...fbData, ...igData, findings: allFindings },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: ['Meta Ad Library API (gratuito)'],
+        dataSources,
       };
     }
 
@@ -435,41 +505,56 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // SEO OFF-PAGE — RDAP domain age + robots.txt + sitemap + Open PageRank
-    // No free real-time backlink API with CORS exists in 2025-2026.
-    // Open PageRank (Common Crawl-derived) is the best free alternative.
-    // Free key at: openpagerank.com (10,000 calls/hour)
+    // SEO OFF-PAGE — SEMrush via Apify (primary) + RDAP/robots/sitemap/OPR (fallback)
     // ────────────────────────────────────────────────────────────────────
     case 'seo_offpage': {
+      const apifyToken = settings.apifyToken ?? '';
       const internalLinks = context.scraped?.internalLinks ?? 0;
-      const result = await analyzeSeoOffpage(
-        siteUrl,
-        settings.openPageRankApiKey ?? '',
-        internalLinks
-      );
+      const allFindings: string[] = [];
+      const allSources: string[] = [];
+
+      // Primary: SEMrush via Apify (authority score + backlinks)
+      let semrushData: Record<string, unknown> = {};
+      let semrushScore = 1;
+      if (apifyToken) {
+        const sem = await fetchSemrush(siteUrl, apifyToken);
+        semrushScore = sem.score;
+        semrushData = {
+          authorityScore: sem.authorityScore,
+          backlinks: sem.backlinks,
+          referringDomains: sem.referringDomains,
+          organicTraffic: sem.organicTraffic,
+          organicKeywords: sem.organicKeywords,
+        };
+        allFindings.push(...sem.findings);
+        if (sem.dataSources.length) allSources.push(...sem.dataSources);
+      }
+
+      // Always run: RDAP + robots.txt + sitemap + Open PageRank
+      const base = await analyzeSeoOffpage(siteUrl, settings.openPageRankApiKey ?? '', internalLinks);
+      allFindings.push(...base.findings);
+      allSources.push(...base.dataSources);
+
+      const finalScore = apifyToken ? Math.max(semrushScore, base.score) : base.score;
+
       return {
-        score: result.score,
+        score: finalScore,
         data: {
-          domainAge: result.domainAge,
-          registrationDate: result.registrationDate,
-          registrar: result.registrar,
-          hasRobotsTxt: result.hasRobotsTxt,
-          robotsTxtSitemapDirective: result.robotsTxtSitemapDirective,
-          robotsDisallowAll: result.robotsDisallowAll,
-          hasSitemapXml: result.hasSitemapXml,
-          sitemapUrlCount: result.sitemapUrlCount,
-          openPageRank: result.openPageRank,
-          openPageRankGlobal: result.openPageRankGlobal,
-          internalLinksCount: result.internalLinksCount,
-          isHttps: result.isHttps,
-          findings: result.findings,
-          note: result.openPageRank === null
-            ? 'Configure openPageRankApiKey (gratuito em openpagerank.com) para obter score de autoridade de backlinks baseado em Common Crawl.'
-            : undefined,
+          ...semrushData,
+          domainAge: base.domainAge,
+          registrationDate: base.registrationDate,
+          registrar: base.registrar,
+          hasRobotsTxt: base.hasRobotsTxt,
+          robotsTxtSitemapDirective: base.robotsTxtSitemapDirective,
+          hasSitemapXml: base.hasSitemapXml,
+          sitemapUrlCount: base.sitemapUrlCount,
+          openPageRank: base.openPageRank,
+          isHttps: base.isHttps,
+          findings: allFindings,
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: result.dataSources,
+        dataSources: allSources,
       };
     }
 
@@ -577,43 +662,81 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // REPUTAÇÃO DIGITAL & VOC — real via Google Places API
+    // REPUTAÇÃO DIGITAL & VOC
+    // Primary: Google Maps via Apify (50+ reviews, sentimento, taxa resposta)
+    // Fallback: Google Places API (5 reviews)
     // ────────────────────────────────────────────────────────────────────
     case 'reputacao_voc': {
+      const apifyToken = settings.apifyToken ?? '';
+      const allFindings: string[] = [];
+      const allSources: string[] = [];
+
+      // Primary: Google Maps enriched via Apify (50 reviews, sentiment, response rate)
+      if (apifyToken) {
+        const maps = await fetchGoogleMapsEnriched(companyName, siteUrl, apifyToken);
+        if (maps.found) {
+          allFindings.push(...maps.findings);
+          allSources.push(...maps.dataSources);
+          return {
+            score: maps.score,
+            data: {
+              googleRating: maps.rating,
+              googleReviews: maps.reviewsCount,
+              reviewSentimentScore: maps.sentimentScore,
+              ownerResponseRate: maps.avgResponseRate,
+              reviewSamples: maps.reviews.slice(0, 10),
+              address: maps.address,
+              phone: maps.phone,
+              website: maps.website,
+              categories: maps.categories,
+              findings: allFindings,
+              reclameAquiNote: 'Reclame Aqui: verificar manualmente em reclameaqui.com.br.',
+            },
+            source: 'auto',
+            dataReliability: 'real',
+            dataSources: allSources,
+          };
+        }
+        allFindings.push(...maps.findings);
+        // Fall through to Places API if Apify didn't find the business
+      }
+
+      // Fallback: Google Places API
       if (!settings.googlePlacesApiKey) {
+        if (!apifyToken) {
+          return insufficient(
+            'Configure googlePlacesApiKey (Google Cloud Console) ou apifyToken (apify.com) para analisar reputação.',
+            'googlePlacesApiKey ou apifyToken'
+          );
+        }
         return insufficient(
-          'Google Places API key não configurada. Obtenha GRATUITAMENTE no Google Cloud Console ' +
-          '(console.cloud.google.com → APIs → Places API → Enable). Cota gratuita: ~$200/mês.',
+          'Empresa não encontrada no Google Maps via Apify. Configure googlePlacesApiKey como fallback.',
           'googlePlacesApiKey'
         );
       }
+
       const result = await fetchGooglePlaces(companyName, siteUrl, settings.googlePlacesApiKey);
       if (result.error && !result.found) {
         return {
           score: 1,
-          data: { error: result.error, findings: result.findings },
-          source: 'insufficient',
-          dataReliability: 'insufficient',
-          dataSources: ['Google Places API'],
-          error: result.error,
+          data: { error: result.error, findings: [...allFindings, ...result.findings] },
+          source: 'insufficient', dataReliability: 'insufficient',
+          dataSources: ['Google Places API'], error: result.error,
         };
       }
+      allSources.push('Google Places API');
       return {
         score: result.score,
         data: {
           googleRating: result.rating,
           googleReviews: result.userRatingsTotal,
           businessStatus: result.businessStatus,
-          address: result.address,
-          phone: result.phone,
-          website: result.website,
-          openNow: result.openNow,
-          findings: result.findings,
-          reclameAquiNote: 'Reclame Aqui: verificar manualmente em reclameaqui.com.br (CORS bloqueado).',
+          address: result.address, phone: result.phone,
+          website: result.website, openNow: result.openNow,
+          findings: [...allFindings, ...result.findings],
+          reclameAquiNote: 'Reclame Aqui: verificar manualmente em reclameaqui.com.br.',
         },
-        source: 'auto',
-        dataReliability: 'real',
-        dataSources: ['Google Places API'],
+        source: 'auto', dataReliability: 'real', dataSources: allSources,
       };
     }
 

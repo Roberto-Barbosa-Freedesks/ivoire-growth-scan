@@ -45,6 +45,7 @@ jobs:
           VITE_META_ACCESS_TOKEN: ${{ secrets.VITE_META_ACCESS_TOKEN }}
           VITE_SPOTIFY_CLIENT_ID: ${{ secrets.VITE_SPOTIFY_CLIENT_ID }}
           VITE_SPOTIFY_CLIENT_SECRET: ${{ secrets.VITE_SPOTIFY_CLIENT_SECRET }}
+          VITE_APIFY_TOKEN: ${{ secrets.VITE_APIFY_TOKEN }}
         run: npm run build
 
       - name: Setup Pages

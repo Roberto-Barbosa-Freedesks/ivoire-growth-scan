@@ -176,4 +176,8 @@ export interface AppSettings {
   // Free key at: openpagerank.com (10,000 calls/hour)
   // Backlink authority score 0–10 based on Common Crawl dataset
   openPageRankApiKey: string;
+
+  // ── Apify — web scraping platform (SimilarWeb, SEMrush, Instagram, etc.) ─
+  // Free: $5 USD/month (~55 full diagnostics). Token at apify.com → Settings
+  apifyToken: string;
 }
