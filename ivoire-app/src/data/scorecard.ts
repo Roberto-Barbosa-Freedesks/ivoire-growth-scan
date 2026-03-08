@@ -62,6 +62,22 @@ export const SUBDIMENSIONS: SubdimensionData[] = [
       4: 'Múltiplos canais de vídeo (YouTube + Reels/TikTok). Podcast com audiência crescente. Estratégia integrada ao funil.',
     },
   },
+  {
+    id: 'inteligencia_demanda',
+    name: 'Inteligência de Demanda',
+    dimension: 'CONTEUDO',
+    description: 'Mapeamento de toda a demanda latente do mercado: perguntas que o público faz sobre a marca e o setor, intenções de busca (informacional, comercial, transacional) e comparações com concorrentes — via AnswerThePublic.',
+    kpis: 'Total de perguntas/termos mapeados; Tipos de intenção cobertos; CPC médio (intenção comercial); Comparações com concorrentes; Volume de busca total estimado.',
+    collectionType: 'automatizado',
+    isConditional: false,
+    dataSources: ['AnswerThePublic via Apify (deadlyaccurate/answer-the-public)', 'Keyword Suggestions Scraper via Apify (fallback)'],
+    levels: {
+      1: 'Menos de 50 termos de demanda mapeados. Sem intenção comercial detectável. Marca ausente em comparações com concorrentes. Estratégia de conteúdo baseada em intuição.',
+      2: '50–200 termos mapeados. Apenas 1–2 tipos de intenção (ex: só perguntas diretas). CPC baixo ou ausente. Conteúdo não cobre sistematicamente as dúvidas do público.',
+      3: '200–500 termos cobrindo 3+ tipos de intenção. CPC moderado com intenção comercial detectada. Comparações com concorrentes presentes. Lacunas de conteúdo identificáveis.',
+      4: '500+ termos mapeados em todos os tipos de intenção. Alta intenção comercial (CPC > R$5). Marca presente em múltiplas comparações. Estratégia de conteúdo data-driven para capturar toda a demanda identificada.',
+    },
+  },
   // ─── CANAIS ──────────────────────────────────────────────────────────────────
   {
     id: 'mix_trafego',

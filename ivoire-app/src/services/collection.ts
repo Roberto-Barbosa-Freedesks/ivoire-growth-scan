@@ -16,6 +16,8 @@ import type { ScrapedPageData } from './htmlScraper';
 import { analyzeSeoOnPage } from './seoOnPage';
 import { analyzeSemanticaGeo } from './semanticaGeo';
 import { fetchYoutubeChannel } from './apifyYoutube';
+import { fetchDemandIntelligence } from './apifyAnswerPublic';
+import { fetchAhrefs } from './apifyAhrefs';
 import { searchMercadoLivre } from './mercadolivre';
 import { fetchGooglePlaces } from './googlePlaces';
 import { fetchMetaAds } from './metaAds';
@@ -480,14 +482,31 @@ export async function collectSubdimension(
         const sem = await fetchSemrush(siteUrl, apifyToken);
         semrushScore = sem.score;
         semrushData = {
-          authorityScore: sem.authorityScore,
-          backlinks: sem.backlinks,
-          referringDomains: sem.referringDomains,
-          organicTraffic: sem.organicTraffic,
-          organicKeywords: sem.organicKeywords,
+          semrushAuthorityScore: sem.authorityScore,
+          semrushBacklinks: sem.backlinks,
+          semrushReferringDomains: sem.referringDomains,
+          semrushOrganicTraffic: sem.organicTraffic,
+          semrushOrganicKeywords: sem.organicKeywords,
         };
         allFindings.push(...sem.findings);
         if (sem.dataSources.length) allSources.push(...sem.dataSources);
+      }
+
+      // Secondary: Ahrefs via Apify (Domain Rating cross-validation)
+      let ahrefsData: Record<string, unknown> = {};
+      let ahrefsScore = 1;
+      if (apifyToken) {
+        const ahr = await fetchAhrefs(siteUrl, apifyToken);
+        ahrefsScore = ahr.score;
+        ahrefsData = {
+          ahrefsDomainRating: ahr.domainRating,
+          ahrefsBacklinks: ahr.backlinks,
+          ahrefsReferringDomains: ahr.referringDomains,
+          ahrefsOrganicTraffic: ahr.organicTraffic,
+          ahrefsOrganicKeywords: ahr.organicKeywords,
+        };
+        allFindings.push(...ahr.findings);
+        if (ahr.dataSources.length) allSources.push(...ahr.dataSources);
       }
 
       // Always run: RDAP + robots.txt + sitemap + Open PageRank
@@ -495,12 +514,15 @@ export async function collectSubdimension(
       allFindings.push(...base.findings);
       allSources.push(...base.dataSources);
 
-      const finalScore = apifyToken ? Math.max(semrushScore, base.score) : base.score;
+      const finalScore = apifyToken
+        ? Math.max(semrushScore, ahrefsScore, base.score)
+        : base.score;
 
       return {
         score: finalScore,
         data: {
           ...semrushData,
+          ...ahrefsData,
           domainAge: base.domainAge,
           registrationDate: base.registrationDate,
           registrar: base.registrar,
@@ -778,6 +800,53 @@ export async function collectSubdimension(
         source: 'auto',
         dataReliability: 'real',
         dataSources,
+      };
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // INTELIGÊNCIA DE DEMANDA — AnswerThePublic via Apify
+    // Mapeia perguntas, preposições, comparações e intenções de busca
+    // sobre a marca e o setor. Fallback: Keyword Suggestions Scraper.
+    // ────────────────────────────────────────────────────────────────────
+    case 'inteligencia_demanda': {
+      const apifyToken = settings.apifyToken ?? '';
+
+      if (!apifyToken) {
+        return insufficient(
+          'Apify Token não configurado. Configure em Configurações para mapear a demanda via AnswerThePublic.',
+          'apifyToken'
+        );
+      }
+
+      const atp = await fetchDemandIntelligence(
+        companyName,
+        input.segment,
+        apifyToken,
+        'br',
+        'pt'
+      );
+
+      return {
+        score: atp.score,
+        data: {
+          keywordsSearched: atp.keywordsSearched,
+          totalItems: atp.totalItems,
+          totalQuestions: atp.byType.questions.length,
+          totalPrepositions: atp.byType.prepositions.length,
+          totalComparisons: atp.byType.comparisons.length,
+          totalRelated: atp.byType.related.length,
+          topQuestions: atp.topQuestions,
+          competitorComparisons: atp.competitorComparisons,
+          questionModifiers: atp.questionModifiers,
+          avgCpc: atp.avgCpc,
+          highIntentCount: atp.highIntentCount,
+          totalSearchVolume: atp.totalSearchVolume,
+          actorUsed: atp.actorUsed,
+          findings: atp.findings,
+        },
+        source: 'auto',
+        dataReliability: atp.found ? 'real' : 'insufficient',
+        dataSources: atp.dataSources,
       };
     }
 
