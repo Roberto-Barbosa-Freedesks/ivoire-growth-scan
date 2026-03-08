@@ -138,9 +138,15 @@ export async function fetchDemandIntelligence(
   segment: string,
   apifyToken: string,
   country = 'br',
-  language = 'pt'
+  language = 'pt',
+  competitorBrand?: string
 ): Promise<DemandIntelligenceResult> {
   const keywords = extractKeywordsFromInput(companyName, segment);
+  // Add "brand vs competitor" as an extra keyword when competitor is known
+  if (competitorBrand && competitorBrand.length >= 2) {
+    const vsKw = `${keywords[0]} vs ${competitorBrand}`;
+    if (!keywords.includes(vsKw)) keywords.push(vsKw);
+  }
 
   const empty: DemandIntelligenceResult = {
     found: false,

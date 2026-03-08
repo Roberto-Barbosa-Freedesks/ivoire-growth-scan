@@ -27,6 +27,7 @@ import { analyzeMixTrafego } from './mixTrafego';
 import type { TrafficChannelSignals } from './mixTrafego';
 import { analyzeSeoOffpage } from './seoOffpage';
 import { fetchSimilarweb } from './apifySimilarweb';
+import type { SimilarwebResult } from './apifySimilarweb';
 import { fetchSemrush } from './apifySemrush';
 import { fetchGoogleMapsEnriched } from './apifyGoogleMaps';
 import { fetchTiktokProfile } from './apifyTiktok';
@@ -313,7 +314,47 @@ export async function collectSubdimension(
       // Primary: SimilarWeb via Apify (real monthly visits + channel breakdown)
       if (apifyToken) {
         const swResult = await fetchSimilarweb(siteUrl, apifyToken);
+
+        // Competitor traffic benchmarking (up to 2 competitors)
+        const competitorTraffic: Array<{
+          url: string;
+          monthlyVisits: number | null;
+          globalRank: number | null;
+          bounceRate: number | null;
+          channelMix: SimilarwebResult['trafficSources'];
+        }> = [];
+        if (input.competitors && input.competitors.length > 0) {
+          const compUrls = input.competitors
+            .slice(0, 2)
+            .map((c) => c.includes('.') ? (c.startsWith('http') ? c : `https://${c}`) : null)
+            .filter(Boolean) as string[];
+          for (const compUrl of compUrls) {
+            try {
+              const compSw = await fetchSimilarweb(compUrl, apifyToken);
+              if (compSw.found || compSw.monthlyVisits !== null) {
+                competitorTraffic.push({
+                  url: compUrl,
+                  monthlyVisits: compSw.monthlyVisits,
+                  globalRank: compSw.globalRank,
+                  bounceRate: compSw.bounceRate,
+                  channelMix: compSw.trafficSources,
+                });
+              }
+            } catch {
+              // skip if competitor lookup fails
+            }
+          }
+        }
+
         if (swResult.found) {
+          const findings = [...swResult.findings];
+          if (competitorTraffic.length > 0) {
+            for (const comp of competitorTraffic) {
+              findings.push(
+                `Concorrente ${comp.url}: ${(comp.monthlyVisits ?? 0).toLocaleString('pt-BR')} visitas/mês · Rank #${comp.globalRank?.toLocaleString('pt-BR') ?? 'N/D'}`
+              );
+            }
+          }
           return {
             score: swResult.score,
             data: {
@@ -324,11 +365,15 @@ export async function collectSubdimension(
               pagesPerVisit: swResult.pagesPerVisit,
               channelMix: swResult.trafficSources,
               topCountries: swResult.topCountries,
-              findings: swResult.findings,
+              competitorTraffic: competitorTraffic.length > 0 ? competitorTraffic : undefined,
+              findings,
             },
             source: 'auto',
             dataReliability: 'real',
-            dataSources: swResult.dataSources,
+            dataSources: [
+              ...swResult.dataSources,
+              ...(competitorTraffic.length > 0 ? ['SimilarWeb via Apify (benchmarking de concorrentes)'] : []),
+            ],
           };
         }
         // SimilarWeb returned no data (site below threshold) — fall through to Tranco
@@ -493,6 +538,7 @@ export async function collectSubdimension(
 
     // ────────────────────────────────────────────────────────────────────
     // SEO OFF-PAGE — SEMrush via Apify (primary) + RDAP/robots/sitemap/OPR (fallback)
+    //               + Competitor benchmarking via Ahrefs (if competitors provided)
     // ────────────────────────────────────────────────────────────────────
     case 'seo_offpage': {
       const apifyToken = settings.apifyToken ?? '';
@@ -534,6 +580,42 @@ export async function collectSubdimension(
         if (ahr.dataSources.length) allSources.push(...ahr.dataSources);
       }
 
+      // Competitor benchmarking — Ahrefs DR for each competitor URL (up to 2)
+      const competitorBenchmark: Array<{
+        url: string;
+        domainRating: number | null;
+        backlinks: number | null;
+        referringDomains: number | null;
+      }> = [];
+      if (apifyToken && input.competitors && input.competitors.length > 0) {
+        const competitorUrls = input.competitors
+          .slice(0, 2)
+          .map((c) => c.includes('.') ? (c.startsWith('http') ? c : `https://${c}`) : null)
+          .filter(Boolean) as string[];
+
+        for (const compUrl of competitorUrls) {
+          try {
+            const compAhr = await fetchAhrefs(compUrl, apifyToken);
+            competitorBenchmark.push({
+              url: compUrl,
+              domainRating: compAhr.domainRating,
+              backlinks: compAhr.backlinks,
+              referringDomains: compAhr.referringDomains,
+            });
+            if (compAhr.found) {
+              allFindings.push(
+                `Concorrente ${compUrl}: DR ${compAhr.domainRating ?? 'N/D'} · ${(compAhr.backlinks ?? 0).toLocaleString('pt-BR')} backlinks · ${(compAhr.referringDomains ?? 0).toLocaleString('pt-BR')} domínios ref.`
+              );
+            }
+          } catch {
+            // skip competitor if lookup fails
+          }
+        }
+        if (competitorBenchmark.length > 0 && !allSources.includes('Ahrefs via Apify (concorrentes)')) {
+          allSources.push('Ahrefs via Apify (benchmarking de concorrentes)');
+        }
+      }
+
       // Always run: RDAP + robots.txt + sitemap + Open PageRank
       const base = await analyzeSeoOffpage(siteUrl, settings.openPageRankApiKey ?? '', internalLinks);
       allFindings.push(...base.findings);
@@ -557,6 +639,7 @@ export async function collectSubdimension(
           sitemapUrlCount: base.sitemapUrlCount,
           openPageRank: base.openPageRank,
           isHttps: base.isHttps,
+          competitorBenchmark: competitorBenchmark.length > 0 ? competitorBenchmark : undefined,
           findings: allFindings,
         },
         source: 'auto',
@@ -843,12 +926,21 @@ export async function collectSubdimension(
         );
       }
 
+      // If competitors provided, include 1 competitor brand name for "X vs Y" comparisons
+      const competitorBrand = input.competitors && input.competitors.length > 0
+        ? input.competitors[0]
+            .replace(/^https?:\/\/(www\.)?/, '')
+            .split('/')[0]
+            .split('.')[0]   // e.g. "concorrente.com.br" → "concorrente"
+        : undefined;
+
       const atp = await fetchDemandIntelligence(
         companyName,
         input.segment,
         apifyToken,
         'br',
-        'pt'
+        'pt',
+        competitorBrand
       );
 
       return {

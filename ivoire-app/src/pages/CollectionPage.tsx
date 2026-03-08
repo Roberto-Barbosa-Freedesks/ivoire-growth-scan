@@ -329,8 +329,8 @@ export default function CollectionPage() {
         </div>
         <div style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.7 }}>
           <strong style={{ color: '#ccc' }}>Sempre reais:</strong> PageSpeed API · HTML scraping (SEO, Schema, UX) · Mercado Livre API<br />
-          <strong style={{ color: '#ccc' }}>Real se configurado:</strong> YouTube API · TikTok (Apify) · Google Places API · Meta Ad Library · Facebook/Instagram (Apify)<br />
-          <strong style={{ color: '#ccc' }}>Apify ativo:</strong> SimilarWeb (Mix de Tráfego) · SEMrush (SEO Off-Page) · Google Maps 50 avaliações (Reputação)<br />
+          <strong style={{ color: '#ccc' }}>Real se configurado:</strong> YouTube (Apify) · TikTok (Apify) · LinkedIn (Apify) · Instagram (Apify) · Google Places API · Meta Ad Library<br />
+          <strong style={{ color: '#ccc' }}>Apify ativo:</strong> SimilarWeb · SEMrush · Ahrefs (+ benchmarking de concorrentes) · Google Maps 50 avaliações · AnswerThePublic<br />
           <span style={{ color: '#FFFF02', cursor: 'pointer' }} onClick={() => navigate('/settings')}>→ Configurar Integrações</span>
         </div>
       </div>
