@@ -139,39 +139,29 @@ export interface PageSpeedData {
 }
 
 export interface AppSettings {
-  // ── Existing ────────────────────────────────────────────────────────────
-  pageSpeedApiKey: string;
-  apolloApiKey: string;
+  // ── Performance & Tracking ──────────────────────────────────────────────
+  pageSpeedApiKey: string;           // Google PageSpeed — gratuito 25k/dia
+
+  // ── Email (futuro) ──────────────────────────────────────────────────────
   emailJSServiceId: string;
   emailJSTemplateId: string;
   emailJSPublicKey: string;
 
   // ── Reputação Digital — Google Places API ───────────────────────────────
-  // Setup: console.cloud.google.com → APIs → Places API → Enable
-  // Cost: ~$0.017/req — first $200/month free
+  // fallback quando Apify não encontra a empresa no Maps
   googlePlacesApiKey: string;
 
   // ── Mídia Paga — Meta Ad Library API ───────────────────────────────────
-  // Get free token at: developers.facebook.com/tools/explorer
-  // Valid ~60 days — renew monthly
+  // Token gratuito em developers.facebook.com/tools/explorer (válido ~60 dias)
   metaAccessToken: string;
 
-  // ── Mix de Tráfego — SimilarWeb API (enterprise) ────────────────────────
-  // Requires SimilarWeb API plan (separate from web account)
-  // Contact: similarweb.com/corp/solutions/api/
-  similarwebApiKey: string;
-
-  // ── SEO Off-Page — SEMrush API ──────────────────────────────────────────
-  // Requires SEMrush plan with API access
-  // docs.semrush.com/api/
-  semrushApiKey: string;
-
   // ── SEO Off-Page — Open PageRank (free, no credit card) ─────────────────
-  // Free key at: openpagerank.com (10,000 calls/hour)
-  // Backlink authority score 0–10 based on Common Crawl dataset
+  // openpagerank.com — 10.000 calls/hora, sem cartão
   openPageRankApiKey: string;
 
-  // ── Apify — web scraping platform (SimilarWeb, SEMrush, Instagram, etc.) ─
-  // Free: $5 USD/month (~55 full diagnostics). Token at apify.com → Settings
+  // ── Apify — plataforma de scraping (substitui SimilarWeb, SEMrush, Apollo) ─
+  // Gratuito: $5 USD/mês (~55 diagnósticos completos). Token em apify.com
+  // Cobre: SimilarWeb · SEMrush · Ahrefs · Google Maps · TikTok ·
+  //        Facebook · Instagram · YouTube · AnswerThePublic · LinkedIn
   apifyToken: string;
 }

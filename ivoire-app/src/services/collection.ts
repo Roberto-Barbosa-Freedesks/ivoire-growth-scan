@@ -18,6 +18,7 @@ import { analyzeSemanticaGeo } from './semanticaGeo';
 import { fetchYoutubeChannel } from './apifyYoutube';
 import { fetchDemandIntelligence } from './apifyAnswerPublic';
 import { fetchAhrefs } from './apifyAhrefs';
+import { fetchLinkedInCompany } from './apifyLinkedIn';
 import { searchMercadoLivre } from './mercadolivre';
 import { fetchGooglePlaces } from './googlePlaces';
 import { fetchMetaAds } from './metaAds';
@@ -405,7 +406,8 @@ export async function collectSubdimension(
         allFindings.push('⚠️ Meta Access Token não configurado — anúncios pagos não verificados');
       }
 
-      // Organic social via Apify
+      // Organic social via Apify — Facebook, Instagram, LinkedIn
+      let liScore = 1; let liData: Record<string, unknown> = {};
       if (apifyToken) {
         const fbUrl = context.scraped?.socialProfileUrls?.['Facebook'];
         const fb = await fetchFacebookPage(fbUrl, companyName, apifyToken);
@@ -422,11 +424,34 @@ export async function collectSubdimension(
           allFindings.push(...ig.findings);
           if (ig.dataSources.length) dataSources.push(...ig.dataSources);
         }
+
+        // LinkedIn Company — substitui Apollo.io (dado de inteligência da empresa)
+        const liUrl = input.linkedIn ?? context.scraped?.socialProfileUrls?.['LinkedIn'];
+        if (liUrl) {
+          const li = await fetchLinkedInCompany(liUrl, apifyToken);
+          liScore = li.score;
+          liData = {
+            linkedin: {
+              found: li.found,
+              companyName: li.companyName,
+              followers: li.followers,
+              employees: li.employees,
+              employeeRange: li.employeeRange,
+              foundedYear: li.foundedYear,
+              headquarters: li.headquarters,
+              industry: li.industry,
+              specialties: li.specialties,
+              companyType: li.companyType,
+            },
+          };
+          allFindings.push(...li.findings);
+          if (li.dataSources.length) dataSources.push(...li.dataSources);
+        }
       }
 
       return {
-        score: Math.max(paidScore, fbScore, igScore),
-        data: { ...paidData, ...fbData, ...igData, findings: allFindings },
+        score: Math.max(paidScore, fbScore, igScore, liScore),
+        data: { ...paidData, ...fbData, ...igData, ...liData, findings: allFindings },
         source: 'auto',
         dataReliability: 'real',
         dataSources,

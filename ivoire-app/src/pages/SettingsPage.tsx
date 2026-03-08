@@ -68,23 +68,6 @@ const INTEGRATIONS: Integration[] = [
     placeholder: 'EAABsbCs4...',
     isTextarea: false,
   },
-  // ── Paid / Enterprise ─────────────────────────────────────────────────
-  {
-    key: 'similarwebApiKey',
-    label: 'SimilarWeb API',
-    category: 'Mix de Tráfego',
-    subdimensions: ['Mix de Tráfego'],
-    cost: 'Pago — API enterprise (separado do acesso web)',
-    status: 'paid',
-    setupUrl: 'https://www.similarweb.com/corp/solutions/api/',
-    setupSteps: [
-      'Contate SimilarWeb (similarweb.com/corp/solutions/api)',
-      'Solicite acesso à API (plano separado do acesso web)',
-      'Após contratação, obtenha a API key no painel',
-      'Nota: conta web (seo@ivoire.com.br) não inclui acesso à API',
-    ],
-    placeholder: 'Sem acesso configurado',
-  },
   {
     key: 'openPageRankApiKey',
     label: 'Open PageRank API',
@@ -101,27 +84,20 @@ const INTEGRATIONS: Integration[] = [
     ],
     placeholder: 'Ex: os0g...xyz (gratuito em openpagerank.com)',
   },
-  {
-    key: 'semrushApiKey',
-    label: 'SEMrush API',
-    category: 'SEO Off-Page',
-    subdimensions: ['SEO Off-Page & Link Building (backlinks detalhados)'],
-    cost: 'Pago — plano com API (a partir de $139/mês)',
-    status: 'paid',
-    setupUrl: 'https://www.semrush.com/api-documentation/',
-    setupSteps: [
-      'Acesse sua conta SEMrush',
-      'Vá em Account → API Units → Generate API key',
-      'Certifique-se que seu plano inclui API access',
-    ],
-    placeholder: 'Sem acesso configurado',
-  },
-  // ── Apify (scraping platform) ─────────────────────────────────────────
+  // ── Apify (plataforma de scraping — substitui todas as APIs pagas) ───────
   {
     key: 'apifyToken',
     label: 'Apify Token',
     category: 'Scrapers & Automação',
-    subdimensions: ['Mix de Tráfego (SimilarWeb)', 'SEO Off-Page (SEMrush)', 'Reputação VoC (Google Maps 50+ avaliações)', 'Mídia Paga (Facebook/Instagram)', 'Vídeo & Áudio (TikTok)'],
+    subdimensions: [
+      'Mix de Tráfego (SimilarWeb)',
+      'SEO Off-Page (SEMrush + Ahrefs)',
+      'Reputação VoC (Google Maps 50+ avaliações)',
+      'Mídia Paga (Facebook / Instagram)',
+      'Vídeo & Áudio (YouTube + TikTok)',
+      'Inteligência de Demanda (AnswerThePublic)',
+      'Presença LinkedIn (empresa)',
+    ],
     cost: 'Gratuito — $5 USD/mês (créditos inclusos) ≈ 55 diagnósticos completos',
     status: 'free',
     setupUrl: 'https://console.apify.com/account/integrations',
@@ -129,26 +105,10 @@ const INTEGRATIONS: Integration[] = [
       'Acesse console.apify.com com sua conta beto.freedesks@gmail.com',
       'Vá em Settings → Integrations → API tokens',
       'Clique em "Create new token" e copie o token gerado',
-      'Cole aqui — substitui SimilarWeb, SEMrush e outras APIs pagas',
+      'Cole aqui — substitui SimilarWeb, SEMrush, Ahrefs, Apollo e outras APIs pagas',
       'Crédito gratuito de $5/mês incluso — sem cartão necessário para uso básico',
     ],
     placeholder: 'apify_api_...',
-    isPassword: true,
-  },
-  // ── Apollo (contatos comerciais) ──────────────────────────────────────
-  {
-    key: 'apolloApiKey',
-    label: 'Apollo.io API',
-    category: 'Prospecção',
-    subdimensions: ['Mapeamento de contatos comerciais'],
-    cost: 'Plano pago com API access',
-    status: 'paid',
-    setupUrl: 'https://apolloio.github.io/apollo-api-docs/',
-    setupSteps: [
-      'Acesse app.apollo.io → Settings → Integrations → API',
-      'Gere sua API key',
-    ],
-    placeholder: 'api_key_...',
     isPassword: true,
   },
 ];
@@ -156,12 +116,9 @@ const INTEGRATIONS: Integration[] = [
 const CATEGORY_ORDER = [
   'Scrapers & Automação',
   'Performance & Tracking',
-  'Vídeo & Áudio',
   'Reputação Digital',
   'Mídia Paga',
-  'Mix de Tráfego',
   'SEO Off-Page',
-  'Prospecção',
 ];
 
 const STATUS_CONFIG = {

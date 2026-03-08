@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../store/store';
-import { searchApolloContacts, generateDemoContacts } from '../../services/apollo';
+import { generateDemoContacts } from '../../services/apollo';
 import { DIMENSION_CONFIG, LEVEL_CONFIG } from '../../data/scorecard';
 import { scoreToLevel } from '../../services/scoring';
 import type { Diagnostic, DimensionKey } from '../../types';
@@ -132,59 +131,20 @@ function ContactCard({ contact, index }: { contact: ApolloContact; index: number
 }
 
 export default function SummaryPage({ diagnostic }: Props) {
-  const { settings } = useAppStore();
   const [contacts, setContacts] = useState<ApolloContact[]>([]);
-  const [apolloLoading, setApolloLoading] = useState(false);
-  const [apolloError, setApolloError] = useState('');
+  const [apolloLoading] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
-  const [apolloTotal, setApolloTotal] = useState(0);
 
   const overallScore = diagnostic.overallScore ?? 0;
   const overallLevel = diagnostic.overallLevel ?? 'Intuitivo';
   const levelCfg = LEVEL_CONFIG[overallLevel];
   const dimensionScores = diagnostic.dimensionScores ?? [];
 
-  // Load Apollo contacts
+  // Load demo contacts (Apollo.io removed — use LinkedIn via Apify for real intelligence)
   useEffect(() => {
-    let cancelled = false;
-    async function loadContacts() {
-      setApolloLoading(true);
-      setApolloError('');
-      try {
-        if (settings.apolloApiKey) {
-          const result = await searchApolloContacts(diagnostic.input.siteUrl, settings.apolloApiKey);
-          if (!cancelled) {
-            if (result.error) {
-              setApolloError(result.error);
-              // Fallback to demo
-              setContacts(generateDemoContacts(diagnostic.input.companyName));
-              setIsDemo(true);
-            } else {
-              setContacts(result.contacts.slice(0, 5));
-              setApolloTotal(result.total);
-              setIsDemo(result.isDemo);
-            }
-          }
-        } else {
-          // No API key — show demo contacts
-          if (!cancelled) {
-            setContacts(generateDemoContacts(diagnostic.input.companyName));
-            setIsDemo(true);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setApolloError(String(err));
-          setContacts(generateDemoContacts(diagnostic.input.companyName));
-          setIsDemo(true);
-        }
-      } finally {
-        if (!cancelled) setApolloLoading(false);
-      }
-    }
-    loadContacts();
-    return () => { cancelled = true; };
-  }, [diagnostic.input.siteUrl, diagnostic.input.companyName, settings.apolloApiKey]);
+    setContacts(generateDemoContacts(diagnostic.input.companyName));
+    setIsDemo(true);
+  }, [diagnostic.input.companyName]);
 
   // Gaps and strengths
   const subdims = diagnostic.subdimensionScores.filter((s) => s.source !== 'skipped');
@@ -373,8 +333,7 @@ export default function SummaryPage({ diagnostic }: Props) {
               Contatos para Abordagem Comercial
             </div>
             <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', margin: 0 }}>
-              Lideranças identificadas em <strong style={{ color: '#ccc' }}>{diagnostic.input.companyName}</strong> via Apollo.io
-              {apolloTotal > 0 && !isDemo && <span style={{ color: '#666' }}> · {apolloTotal} contatos encontrados</span>}
+              Lideranças identificadas em <strong style={{ color: '#ccc' }}>{diagnostic.input.companyName}</strong>
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -383,27 +342,13 @@ export default function SummaryPage({ diagnostic }: Props) {
                 DEMO
               </span>
             )}
-            {!settings.apolloApiKey && (
-              <div style={{ fontSize: 11, color: '#666', fontFamily: 'Arvo, serif', padding: '6px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 4 }}>
-                Configure a API Key Apollo.io nas Configurações
-              </div>
-            )}
           </div>
         </div>
-
-        {apolloError && (
-          <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 6 }}>
-            <div style={{ fontSize: 12, color: '#ff6b6b', fontFamily: 'Arvo, serif' }}>
-              ⚠ {apolloError}
-            </div>
-            {isDemo && <div style={{ fontSize: 11, color: '#777', fontFamily: 'Arvo, serif', marginTop: 4 }}>Exibindo contatos de demonstração.</div>}
-          </div>
-        )}
 
         {apolloLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px', gap: 12 }}>
             <span className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#FFFF02', borderRadius: '50%', display: 'inline-block' }} />
-            <span style={{ fontSize: 13, color: '#777', fontFamily: 'Arvo, serif' }}>Buscando contatos via Apollo.io…</span>
+            <span style={{ fontSize: 13, color: '#777', fontFamily: 'Arvo, serif' }}>Carregando contatos…</span>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
