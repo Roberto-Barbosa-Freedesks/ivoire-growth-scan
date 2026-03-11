@@ -60,7 +60,11 @@ export function extractTechDetection(lighthouseResult: Record<string, unknown>):
     intercomInstalled: false,
     consentModeV2: false,
     thirdPartyDomains: entityNames.slice(0, 10),
-    totalThirdParties: thirdPartySummary?.details?.items?.length || 0,
+    totalThirdParties:
+      thirdPartySummary?.details?.items?.length ||
+      (audits['uses-third-party-facades'] as { details?: { items?: unknown[] } } | undefined)?.details?.items?.length ||
+      entityNames.length ||
+      0,
   };
 
   for (const { key, patterns } of TECH_PATTERNS) {

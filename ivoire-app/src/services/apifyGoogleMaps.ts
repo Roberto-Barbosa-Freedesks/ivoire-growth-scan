@@ -79,9 +79,10 @@ export async function fetchGoogleMapsEnriched(
   if (!apifyToken) return empty;
 
   const domain = siteUrl ? extractDomain(siteUrl) : '';
-  // Try 2 search variations: name only → name + domain
+  // Try 3 search variations: name only → name + domain → name + "brasil"
   const searchVariants = [companyName];
   if (domain && domain.length > 3) searchVariants.push(`${companyName} ${domain}`);
+  searchVariants.push(`${companyName} brasil`);
 
   let items: unknown[] = [];
   for (const query of searchVariants) {
@@ -94,7 +95,7 @@ export async function fetchGoogleMapsEnriched(
           maxReviews,
           reviewsSort: 'newest',
           includeWebResults: false,
-          maxCrawledPlacesPerSearch: 3,
+          maxCrawledPlacesPerSearch: 5,
         },
         apifyToken,
         { timeoutSecs: 90 }

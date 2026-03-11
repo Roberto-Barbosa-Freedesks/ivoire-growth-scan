@@ -85,17 +85,18 @@ export async function fetchTiktokProfile(
     const n = Number(val);
     return val != null && val !== '' && !isNaN(n) ? n : null;
   };
-  const stats = (d.stats ?? d.authorStats ?? {}) as Record<string, unknown>;
+  const user = (d.user ?? d) as Record<string, unknown>;
+  const stats = (user.stats ?? d.stats ?? d.authorStats ?? {}) as Record<string, unknown>;
   const result: TiktokResult = {
     found: true,
-    username: String(d.uniqueId ?? d.username ?? d.author ?? username),
-    displayName: String(d.nickname ?? d.displayName ?? d.name ?? ''),
-    followers: nn(d.fans ?? d.followerCount ?? stats.followerCount ?? stats.fans ?? d.followers),
-    following: nn(d.following ?? d.followingCount ?? stats.followingCount),
-    likes: nn(d.heart ?? d.heartCount ?? stats.heartCount ?? d.diggCount ?? d.likeCount ?? stats.diggCount),
-    videoCount: nn(d.video ?? d.videoCount ?? stats.videoCount ?? d.awemeCount),
-    bio: d.signature ? String(d.signature) : d.bio ? String(d.bio) : null,
-    verified: !!(d.verified ?? d.isVerified ?? d.privateAccount === false),
+    username: String(user.uniqueId ?? d.uniqueId ?? user.username ?? d.username ?? d.author ?? username),
+    displayName: String(user.nickname ?? d.nickname ?? user.displayName ?? d.displayName ?? d.name ?? ''),
+    followers: nn(user.fans ?? user.followerCount ?? stats.followerCount ?? stats.fans ?? d.fans ?? d.followerCount ?? d.followers),
+    following: nn(user.following ?? user.followingCount ?? stats.followingCount ?? d.following ?? d.followingCount),
+    likes: nn(user.heart ?? user.heartCount ?? stats.heartCount ?? d.heart ?? d.heartCount ?? d.diggCount ?? d.likeCount ?? stats.diggCount),
+    videoCount: nn(user.video ?? user.videoCount ?? stats.videoCount ?? d.video ?? d.videoCount ?? d.awemeCount),
+    bio: user.signature ? String(user.signature) : d.signature ? String(d.signature) : d.bio ? String(d.bio) : null,
+    verified: !!(user.verified ?? user.isVerified ?? d.verified ?? d.isVerified ?? false),
     profileUrl,
     score: 1,
     findings: [],

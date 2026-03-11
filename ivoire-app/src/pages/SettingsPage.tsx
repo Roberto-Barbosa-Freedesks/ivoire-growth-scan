@@ -111,10 +111,30 @@ const INTEGRATIONS: Integration[] = [
     placeholder: 'apify_api_...',
     isPassword: true,
   },
+  // ── Claude / Anthropic API (análise LLM de Jornada de Checkout) ──────────
+  {
+    key: 'claudeApiKey',
+    label: 'Claude / Anthropic API Key',
+    category: 'Análise com IA',
+    subdimensions: ['Jornada de Checkout'],
+    cost: 'Pago — claude-haiku ~$0.001/diagnóstico. Primeiro $5 grátis com cartão.',
+    status: 'paid',
+    setupUrl: 'https://console.anthropic.com/account/keys',
+    setupSteps: [
+      'Acesse console.anthropic.com e crie uma conta',
+      'Vá em API Keys e clique em "Create Key"',
+      'Copie a chave (começa com "sk-ant-...")',
+      'Cole aqui — análise especialista de UX/CRO/Checkout com Claude Haiku',
+      'Opcional: sem a chave, a análise de checkout usa lógica estática como fallback',
+    ],
+    placeholder: 'sk-ant-api03-...',
+    isPassword: true,
+  },
 ];
 
 const CATEGORY_ORDER = [
   'Scrapers & Automação',
+  'Análise com IA',
   'Performance & Tracking',
   'Reputação Digital',
   'Mídia Paga',

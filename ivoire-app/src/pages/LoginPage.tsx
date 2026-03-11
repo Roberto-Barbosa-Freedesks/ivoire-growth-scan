@@ -268,7 +268,7 @@ export default function LoginPage() {
           <img
             src={`${BASE_URL}ivoire-logo-yellow.png`}
             alt="Ivoire"
-            style={{ width: '220px', height: 'auto', marginBottom: '12px', display: 'block', mixBlendMode: 'multiply' as const }}
+            style={{ width: '220px', height: 'auto', marginBottom: '12px', display: 'block' }}
             onError={(e) => {
               // Fallback to text if image fails
               (e.target as HTMLImageElement).style.display = 'none';

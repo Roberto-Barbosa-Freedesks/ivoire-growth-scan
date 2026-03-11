@@ -33,6 +33,7 @@ import { fetchGoogleMapsEnriched } from './apifyGoogleMaps';
 import { fetchTiktokProfile } from './apifyTiktok';
 import { fetchFacebookPage } from './apifyFacebook';
 import { fetchInstagramProfile } from './apifyInstagram';
+import { analyzeCheckoutWithClaude } from './checkoutAnalysis';
 
 export interface CollectionResult {
   score: number; // 1–4
@@ -729,50 +730,37 @@ export async function collectSubdimension(
         );
       }
 
-      const findings: string[] = [];
-      const paymentMethods = scraped.paymentMethods;
       const ecommercePlatform = scraped.ecommercePlatform ?? null;
+      const paymentMethods = scraped.paymentMethods;
       const hasCartIndicators = scraped.ctaKeywordsFound.some((kw) =>
         ['comprar', 'buy', 'carrinho', 'checkout', 'finalizar', 'pagar', 'adicionar'].includes(kw)
       ) || /\/cart|\/checkout|adicionar.?ao.?carrinho/i.test(scraped.url);
+      const hasPix = paymentMethods.includes('PIX');
 
-      if (ecommercePlatform) {
-        findings.push(`✓ Plataforma e-commerce detectada: ${ecommercePlatform}`);
-      }
-      if (paymentMethods.length > 0) {
-        findings.push(`✓ Métodos de pagamento: ${paymentMethods.join(', ')}`);
-      } else {
-        findings.push('Métodos de pagamento não identificados no HTML da homepage');
-      }
-      if (hasCartIndicators) findings.push('✓ Indicadores de carrinho/checkout detectados');
-      if (scraped.formFieldCount > 0) findings.push(`${scraped.formFieldCount} campos de formulário detectados`);
-      // PIX + parcelamento as enhanced detection
-      const hasParcelamento = /parcela(?:mento|r)|[0-9]+x\s*sem\s*juros|[0-9]+x\s*de\s*R\$/i.test(scraped.rawHtmlLength > 0 ? '' : '');
-      if (hasParcelamento) findings.push('✓ Parcelamento detectado');
-      findings.push(
-        'Nota: Análise limitada ao HTML da homepage via CORS proxy. ' +
-        'Para fluxo completo de checkout é necessário acesso server-side.'
+      const claudeKey = settings.claudeApiKey ?? '';
+      const llmResult = await analyzeCheckoutWithClaude(
+        scraped,
+        context.tech,
+        ecommercePlatform,
+        siteUrl,
+        claudeKey
       );
 
-      let score = 1;
-      const hasPix = paymentMethods.includes('PIX');
-      if (hasPix && paymentMethods.length >= 3) score = 3;
-      else if (paymentMethods.length >= 2 || (ecommercePlatform && hasCartIndicators)) score = 2;
-      else if (paymentMethods.length >= 1 || hasCartIndicators || ecommercePlatform) score = 2;
-
       return {
-        score,
+        score: llmResult.score,
         data: {
           paymentMethods,
           hasCartIndicators,
           hasPix,
           ecommercePlatform,
           formFieldCount: scraped.formFieldCount,
-          findings,
+          findings: llmResult.findings,
+          recommendations: llmResult.recommendations,
+          llmUsed: llmResult.llmUsed,
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: ['Análise HTML do site (CORS proxy)'],
+        dataSources: llmResult.dataSources,
       };
     }
 

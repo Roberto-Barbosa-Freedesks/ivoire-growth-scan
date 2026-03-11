@@ -20,7 +20,8 @@ function levelColor(s: number) {
   return LEVEL_COLORS[scoreToLevel(s)] ?? '#999';
 }
 
-// Deterministic seeded random for consistent competitor simulation
+// Deterministic seeded random — used ONLY for dimension scores of competitors
+// (we don't run full 4Cs analysis on competitor URLs)
 function seededRand(seed: number) {
   let s = Math.abs(seed) % 2147483647;
   if (s === 0) s = 1;
@@ -43,16 +44,47 @@ interface CompetitorData {
   url: string;
   overallScore: number;
   dimensionScores: Record<DimensionKey, number>;
-  trafficEstimate: number;
-  authorityScore: number;
-  backlinks: number;
-  referringDomains: number;
-  mobileScore: number;
-  googleRating: number;
+  trafficEstimate: number | null;
+  authorityScore: number | null;
+  backlinks: number | null;
+  referringDomains: number | null;
+  mobileScore: number | null;
   isTarget: boolean;
+  hasRealData: boolean;
 }
 
-function buildCompetitorData(url: string, isTarget = false, targetScore?: Record<DimensionKey, number>): CompetitorData {
+// Extract real competitor metrics from subdimension rawData
+function extractRealMetrics(
+  url: string,
+  competitorTraffic: Array<Record<string, unknown>> | undefined,
+  competitorBenchmark: Array<Record<string, unknown>> | undefined
+): { trafficEstimate: number | null; authorityScore: number | null; backlinks: number | null; referringDomains: number | null } {
+  const domain = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+
+  const trafficEntry = competitorTraffic?.find((c) => {
+    const entryUrl = String(c.url ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+    return entryUrl === domain || entryUrl.includes(domain) || domain.includes(entryUrl);
+  });
+
+  const benchmarkEntry = competitorBenchmark?.find((c) => {
+    const entryUrl = String(c.url ?? '').replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+    return entryUrl === domain || entryUrl.includes(domain) || domain.includes(entryUrl);
+  });
+
+  return {
+    trafficEstimate: trafficEntry ? (Number(trafficEntry.monthlyVisits) || null) : null,
+    authorityScore: benchmarkEntry ? (Number(benchmarkEntry.authorityScore ?? benchmarkEntry.dr) || null) : null,
+    backlinks: benchmarkEntry ? (Number(benchmarkEntry.backlinks) || null) : null,
+    referringDomains: benchmarkEntry ? (Number(benchmarkEntry.referringDomains) || null) : null,
+  };
+}
+
+function buildCompetitorData(
+  url: string,
+  isTarget = false,
+  targetScore?: Record<DimensionKey, number>,
+  realMetrics?: { trafficEstimate: number | null; authorityScore: number | null; backlinks: number | null; referringDomains: number | null }
+): CompetitorData {
   const r = seededRand(hashStr(url));
   const label = url.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
 
@@ -66,19 +98,20 @@ function buildCompetitorData(url: string, isTarget = false, targetScore?: Record
       };
 
   const overall = Object.values(dimScores).reduce((a, b) => a + b, 0) / 4;
+  const hasRealData = !!(realMetrics?.trafficEstimate || realMetrics?.authorityScore);
 
   return {
     name: isTarget ? label + ' (analisado)' : label,
     url,
     overallScore: Math.round(overall * 100) / 100,
     dimensionScores: dimScores,
-    trafficEstimate: Math.floor(5000 + r() * 1000000),
-    authorityScore: Math.floor(10 + r() * 70),
-    backlinks: Math.floor(100 + r() * 50000),
-    referringDomains: Math.floor(20 + r() * 2000),
-    mobileScore: Math.floor(30 + r() * 70),
-    googleRating: Math.round((3.0 + r() * 2.0) * 10) / 10,
+    trafficEstimate: realMetrics?.trafficEstimate ?? null,
+    authorityScore: realMetrics?.authorityScore ?? null,
+    backlinks: realMetrics?.backlinks ?? null,
+    referringDomains: realMetrics?.referringDomains ?? null,
+    mobileScore: null,
     isTarget,
+    hasRealData,
   };
 }
 
@@ -97,6 +130,15 @@ function TrafficBar({ value, max, color }: { value: number; max: number; color: 
   );
 }
 
+function MetricCell({ value, color, isEstimate }: { value: string; color: string; isEstimate?: boolean }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <span className="font-bebas" style={{ fontSize: 20, color }}>{value}</span>
+      {isEstimate && <span style={{ display: 'block', fontSize: 8, color: '#555', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5 }}>est.</span>}
+    </div>
+  );
+}
+
 export default function CompetitorPage({ diagnostic }: Props) {
   const competitors = diagnostic.input.competitors ?? [];
   const targetUrl = diagnostic.input.siteUrl;
@@ -106,12 +148,32 @@ export default function CompetitorPage({ diagnostic }: Props) {
     DIMENSION_ORDER.map((k) => [k, dimScores.find((d) => d.key === k)?.score ?? 1])
   ) as Record<DimensionKey, number>;
 
+  // Extract real competitor metrics from already-collected subdimension data
+  const mixTrafegoScore = diagnostic.subdimensionScores?.find((s) => s.subdimensionId === 'mix_trafego');
+  const seoOffpageScore = diagnostic.subdimensionScores?.find((s) => s.subdimensionId === 'seo_offpage');
+
+  const competitorTraffic = mixTrafegoScore?.rawData?.competitorTraffic as Array<Record<string, unknown>> | undefined;
+  const competitorBenchmark = seoOffpageScore?.rawData?.competitorBenchmark as Array<Record<string, unknown>> | undefined;
+
+  // Target real metrics from its own subdimension data
+  const targetRealMetrics = {
+    trafficEstimate: mixTrafegoScore?.rawData?.monthlyVisits as number | null ?? null,
+    authorityScore: seoOffpageScore?.rawData?.authorityScore as number | null ?? null,
+    backlinks: seoOffpageScore?.rawData?.totalBacklinks as number | null ?? null,
+    referringDomains: seoOffpageScore?.rawData?.referringDomains as number | null ?? null,
+  };
+
   const allCompetitors: CompetitorData[] = [
-    buildCompetitorData(targetUrl, true, targetDimMap),
-    ...competitors.map((url) => buildCompetitorData(url.trim())),
+    buildCompetitorData(targetUrl, true, targetDimMap, targetRealMetrics),
+    ...competitors.map((url) => {
+      const realMetrics = extractRealMetrics(url.trim(), competitorTraffic, competitorBenchmark);
+      return buildCompetitorData(url.trim(), false, undefined, realMetrics);
+    }),
   ];
 
-  const maxTraffic = Math.max(...allCompetitors.map((c) => c.trafficEstimate));
+  const hasAnyRealData = allCompetitors.some((c) => c.hasRealData);
+  const trafficValues = allCompetitors.map((c) => c.trafficEstimate ?? 0);
+  const maxTraffic = Math.max(...trafficValues, 1);
 
   // Radar data: one point per dimension, one line per competitor
   const radarData = DIMENSION_ORDER.map((k) => ({
@@ -138,9 +200,10 @@ export default function CompetitorPage({ diagnostic }: Props) {
         <h1 className="font-bebas" style={{ fontSize: 44, color: '#fff', margin: 0, letterSpacing: 2, lineHeight: 1 }}>
           Benchmark de Maturidade Digital
         </h1>
-        <p style={{ fontFamily: 'Arvo, serif', fontSize: 13, color: '#666', marginTop: 8 }}>
-          Dados estimados via simulação determinística baseada em sinais públicos disponíveis.
-          {' '}<span style={{ color: '#ff9900' }}>Não substitui análise com acesso a SimilarWeb/Semrush Pro.</span>
+        <p style={{ fontFamily: 'Arvo, serif', fontSize: 13, color: '#c9c9c9', marginTop: 8 }}>
+          {hasAnyRealData
+            ? 'Métricas de tráfego e autoridade coletadas via Apify (SimilarWeb + SEMrush/Ahrefs). Scores de maturidade por dimensão são estimados para concorrentes.'
+            : 'Configure o Apify Token em Configurações para coletar métricas reais dos concorrentes (tráfego, authority score, backlinks).'}
         </p>
       </div>
 
@@ -150,7 +213,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
           <h2 className="font-montserrat" style={{ fontSize: 15, color: '#aaa', fontWeight: 600, marginBottom: 8 }}>
             Nenhum concorrente informado
           </h2>
-          <p style={{ fontFamily: 'Arvo, serif', fontSize: 13, color: '#666', maxWidth: 400, margin: '0 auto' }}>
+          <p style={{ fontFamily: 'Arvo, serif', fontSize: 13, color: '#c9c9c9', maxWidth: 400, margin: '0 auto' }}>
             Para ver o comparativo, informe os URLs dos concorrentes ao criar um novo diagnóstico.
           </p>
         </div>
@@ -158,13 +221,13 @@ export default function CompetitorPage({ diagnostic }: Props) {
         <>
           {/* Overall score bar chart */}
           <div className="ivoire-card" style={{ padding: '24px 28px', marginBottom: 24 }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
               Score de Maturidade Geral — Comparativo
             </div>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={barData} barSize={40} margin={{ top: 4, right: 20, left: 0, bottom: 0 }}>
                 <XAxis dataKey="name" tick={{ fill: '#888', fontSize: 10, fontFamily: 'Montserrat, sans-serif' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: '#555', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 4]} ticks={[1, 2, 3, 4]} tick={{ fill: '#c9c9c9', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip
                   cursor={{ fill: 'rgba(255,255,255,0.03)' }}
                   contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, fontSize: 12, fontFamily: 'Arvo, serif', color: '#ccc' }}
@@ -179,7 +242,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
 
           {/* Radar chart */}
           <div className="ivoire-card" style={{ padding: '24px 28px', marginBottom: 24 }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
               Radar de Maturidade por Dimensão
             </div>
             <ResponsiveContainer width="100%" height={300}>
@@ -208,7 +271,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
 
           {/* Dimension breakdown per competitor */}
           <div style={{ marginBottom: 24 }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
               Análise por Dimensão
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
@@ -252,8 +315,8 @@ export default function CompetitorPage({ diagnostic }: Props) {
           {/* Full comparison table */}
           <div className="ivoire-card" style={{ overflow: 'hidden', marginBottom: 24 }}>
             <div style={{ padding: '18px 22px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase' }}>
-                Métricas de Presença Digital Estimadas
+              <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
+                Métricas de Presença Digital{hasAnyRealData ? ' — Dados Reais' : ''}
               </div>
             </div>
 
@@ -262,13 +325,16 @@ export default function CompetitorPage({ diagnostic }: Props) {
               display: 'grid', gridTemplateColumns: `200px repeat(${allCompetitors.length}, 1fr)`,
               padding: '12px 22px', borderBottom: '1px solid rgba(255,255,255,0.07)',
             }}>
-              <span style={{ fontSize: 10, color: '#555', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1 }}>MÉTRICA</span>
+              <span style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1 }}>MÉTRICA</span>
               {allCompetitors.map((c) => (
                 <span key={c.name} style={{
                   fontSize: 10, fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5,
                   color: c.isTarget ? '#FFFF02' : '#aaa', textAlign: 'center',
                 }}>
                   {c.name}
+                  {!c.isTarget && !c.hasRealData && (
+                    <span style={{ display: 'block', fontSize: 8, color: '#555', letterSpacing: 0 }}>estimado</span>
+                  )}
                 </span>
               ))}
             </div>
@@ -276,12 +342,16 @@ export default function CompetitorPage({ diagnostic }: Props) {
             {/* Traffic row */}
             <div style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${allCompetitors.length}, 1fr)`, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: '#777', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
-                  Tráfego/Mês (est.)
+                <span style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
+                  Tráfego/Mês
                 </span>
                 {allCompetitors.map((c) => (
                   <div key={c.name} style={{ padding: '0 8px' }}>
-                    <TrafficBar value={c.trafficEstimate} max={maxTraffic} color={c.isTarget ? '#FFFF02' : '#666'} />
+                    {c.trafficEstimate != null ? (
+                      <TrafficBar value={c.trafficEstimate} max={maxTraffic} color={c.isTarget ? '#FFFF02' : '#666'} />
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#444', fontFamily: 'Arvo, serif', display: 'block', textAlign: 'center' }}>N/D</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -291,33 +361,36 @@ export default function CompetitorPage({ diagnostic }: Props) {
             {[
               {
                 label: 'Authority Score',
-                tooltip: 'Domain authority 0–100. Fonte: Semrush estimado.',
-                get: (c: CompetitorData) => ({ value: String(c.authorityScore), color: c.authorityScore >= 40 ? '#00cc66' : c.authorityScore >= 20 ? '#ff9900' : '#ff4d4d' }),
+                tooltip: 'Domain authority 0–100. Fonte: SEMrush/Ahrefs via Apify.',
+                get: (c: CompetitorData) => {
+                  if (c.authorityScore == null) return { value: 'N/D', color: '#444', isEstimate: false };
+                  return { value: String(c.authorityScore), color: c.authorityScore >= 40 ? '#00cc66' : c.authorityScore >= 20 ? '#ff9900' : '#ff4d4d', isEstimate: false };
+                },
               },
               {
                 label: 'Backlinks Totais',
                 tooltip: 'Total de links externos apontando para o domínio.',
-                get: (c: CompetitorData) => ({ value: c.backlinks > 9999 ? `${(c.backlinks / 1000).toFixed(0)}K` : String(c.backlinks), color: '#FFFF02' }),
+                get: (c: CompetitorData) => {
+                  if (c.backlinks == null) return { value: 'N/D', color: '#444', isEstimate: false };
+                  return { value: c.backlinks > 9999 ? `${(c.backlinks / 1000).toFixed(0)}K` : String(c.backlinks), color: '#FFFF02', isEstimate: false };
+                },
               },
               {
                 label: 'Domínios Referência',
                 tooltip: 'Quantidade de domínios únicos que linkam para o site.',
-                get: (c: CompetitorData) => ({ value: String(c.referringDomains), color: c.referringDomains >= 200 ? '#00cc66' : '#ff9900' }),
-              },
-              {
-                label: 'Mobile Score',
-                tooltip: 'Score de performance mobile PageSpeed Insights (0–100).',
-                get: (c: CompetitorData) => ({ value: String(c.mobileScore), color: c.mobileScore >= 75 ? '#00cc66' : c.mobileScore >= 50 ? '#ff9900' : '#ff4d4d' }),
-              },
-              {
-                label: 'Google Rating',
-                tooltip: 'Avaliação média no Google Meu Negócio.',
-                get: (c: CompetitorData) => ({ value: c.googleRating.toFixed(1) + '★', color: c.googleRating >= 4.5 ? '#00cc66' : c.googleRating >= 4.0 ? '#ff9900' : '#ff4d4d' }),
+                get: (c: CompetitorData) => {
+                  if (c.referringDomains == null) return { value: 'N/D', color: '#444', isEstimate: false };
+                  return { value: String(c.referringDomains), color: c.referringDomains >= 200 ? '#00cc66' : '#ff9900', isEstimate: false };
+                },
               },
               {
                 label: 'Score Maturidade',
-                tooltip: 'Score geral de maturidade digital (Framework 4Cs Ivoire).',
-                get: (c: CompetitorData) => ({ value: c.overallScore.toFixed(2), color: levelColor(c.overallScore) }),
+                tooltip: 'Score geral de maturidade digital (Framework 4Cs Ivoire). Para concorrentes: estimado via modelo determinístico.',
+                get: (c: CompetitorData) => ({
+                  value: c.overallScore.toFixed(2),
+                  color: levelColor(c.overallScore),
+                  isEstimate: !c.isTarget,
+                }),
               },
             ].map(({ label, tooltip, get }) => (
               <div key={label} title={tooltip} style={{
@@ -325,16 +398,12 @@ export default function CompetitorPage({ diagnostic }: Props) {
                 padding: '12px 22px', borderBottom: '1px solid rgba(255,255,255,0.04)',
                 cursor: 'help',
               }}>
-                <span style={{ fontSize: 11, color: '#777', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, alignSelf: 'center' }}>
+                <span style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, alignSelf: 'center' }}>
                   {label}
                 </span>
                 {allCompetitors.map((c) => {
-                  const { value, color } = get(c);
-                  return (
-                    <div key={c.name} style={{ textAlign: 'center' }}>
-                      <span className="font-bebas" style={{ fontSize: 20, color }}>{value}</span>
-                    </div>
-                  );
+                  const { value, color, isEstimate } = get(c);
+                  return <MetricCell key={c.name} value={value} color={color} isEstimate={isEstimate} />;
                 })}
               </div>
             ))}
@@ -342,7 +411,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
 
           {/* Gaps and opportunities */}
           <div className="ivoire-card" style={{ padding: '24px 28px' }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 }}>
               Gaps e Oportunidades vs. Concorrentes
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -366,7 +435,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
                     </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <span style={{ fontSize: 11, color: '#777', fontFamily: 'Arvo, serif' }}>
+                        <span style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif' }}>
                           {diagnostic.input.companyName}: <strong style={{ color: levelColor(targetScore) }}>{targetScore.toFixed(1)}</strong>
                           {' · '}Média concorrentes: <strong style={{ color: '#aaa' }}>{avgCompetitor.toFixed(1)}</strong>
                         </span>
@@ -374,7 +443,7 @@ export default function CompetitorPage({ diagnostic }: Props) {
                           {gap >= 0 ? '+' : ''}{gap.toFixed(2)}
                         </span>
                       </div>
-                      <p style={{ fontSize: 11, color: '#666', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
                         {gap < -0.5
                           ? `Gap crítico em ${cfg.name}. Concorrentes apresentam maturidade superior — prioridade alta de investimento.`
                           : gap < 0
@@ -390,12 +459,13 @@ export default function CompetitorPage({ diagnostic }: Props) {
             </div>
           </div>
 
-          {/* Disclaimer */}
+          {/* Data note */}
           <div style={{ marginTop: 20, padding: '12px 16px', background: 'rgba(255,153,0,0.05)', border: '1px solid rgba(255,153,0,0.15)', borderRadius: 6 }}>
-            <p style={{ fontSize: 11, color: '#666', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.6 }}>
-              <strong style={{ color: '#ff9900' }}>Nota metodológica:</strong> Os dados de concorrentes são estimados via simulação determinística baseada no URL informado.
-              Métricas como tráfego, backlinks e authority score refletem ordens de grandeza e não são extraídas em tempo real de SimilarWeb ou Semrush.
-              Para análise competitiva precisa, utilizar plataformas com acesso API (SimilarWeb Pro, Semrush, Ahrefs).
+            <p style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.6 }}>
+              <strong style={{ color: '#ff9900' }}>Nota metodológica:</strong>{' '}
+              {hasAnyRealData
+                ? 'Tráfego e métricas de SEO Off-Page coletados via SimilarWeb e SEMrush/Ahrefs (Apify) durante o diagnóstico. Scores de maturidade por dimensão dos concorrentes são estimados via modelo determinístico — não refletem análise 4Cs real dos concorrentes.'
+                : 'Apify Token não configurado ou concorrentes não foram encontrados nas APIs. Configure o token em Configurações para obter dados reais de tráfego e autoridade dos concorrentes.'}
             </p>
           </div>
         </>

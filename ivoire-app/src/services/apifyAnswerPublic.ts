@@ -1,16 +1,16 @@
 /**
- * Keyword Demand Intelligence via AnswerThePublic + fallback
+ * Keyword Demand Intelligence via Google People Also Ask + Google Autocomplete
  *
- * Primary actor:  deadlyaccurate/answer-the-public
- *   Input:  { keywords: string[], country: string, language: string }
- *   Output: [{ keyword, type, modifier, text, searchVolume?, cpc? }]
- *   Types:  "questions" | "prepositions" | "comparisons" | "alphabetical" | "related"
- *   Q-modifiers: how, what, why, can, are, which, will, when, where, who
- *   P-modifiers: for, is, with, to, without, near, vs
- *   C-modifiers: vs, like, and, or
+ * Primary actor:   ib4ngz/google-people-also-ask-scraper
+ *   Input:  { query: string, maxResults: number }
+ *   Output: [{ question, url?, ... }]
  *
- * Fallback actor: nXr538ymPqrcclpen (Keyword Suggestions Scraper)
- *   Used automatically if primary actor is in maintenance / returns empty.
+ * Fallback 1:      damilo/google-autocomplete-apify
+ *   Input:  { keyword: string, country: string, language: string }
+ *   Output: [{ suggestion: string, ... }]
+ *
+ * Fallback 2:      deadlyaccurate/answer-the-public (legacy)
+ * Fallback 3:      nXr538ymPqrcclpen (Keyword Suggestions Scraper)
  *
  * Strategy per diagnostic:
  *   1. Brand name search → demand for the brand itself
@@ -23,9 +23,7 @@
  *   pts += 1 if competitorComparisons >= 3
  *   score 4 = pts >= 6 | 3 = pts >= 4 | 2 = pts >= 2 | 1 = pts < 2
  *
- * Cost (primary):  ~$0.01–0.03 per keyword
- * Cost (fallback): ~$0.005 per keyword
- * Free tier: ~150–500 keyword lookups/month within $5 budget
+ * Cost: ~$0.002–0.01 per keyword lookup within $5/mo free tier
  */
 
 import { runApifyActor } from './apifyClient';
@@ -167,78 +165,103 @@ export async function fetchDemandIntelligence(
 
   if (!apifyToken) return empty;
 
-  // ── 1. Try primary: deadlyaccurate/answer-the-public ─────────────────────
-  // Attempt multiple input formats since the actor API may vary
   let rawItems: ATPItem[] = [];
-  let actorUsed = 'deadlyaccurate/answer-the-public';
+  let actorUsed = '';
 
-  const primaryInputs = [
-    { keywords, country, language },
-    { keyword: keywords[0], country, language },
-    { searchTerm: keywords[0], country, language },
-  ];
-  for (const input of primaryInputs) {
-    if (rawItems.length > 0) break;
-    try {
-      const raw = await runApifyActor<ATPItem>(
-        'deadlyaccurate/answer-the-public',
-        input,
-        apifyToken,
-        { timeoutSecs: 150 }
-      );
-      rawItems = raw.filter(i => i.text && i.text.trim().length > 0);
-    } catch {
-      // try next format
+  // Helper: map an arbitrary Apify result row to ATPItem
+  const mapRow = (r: Record<string, unknown>, defaultType: string): ATPItem => ({
+    keyword: String(r.keyword ?? r.query ?? keywords[0]),
+    type: String(r.type ?? defaultType),
+    modifier: String(r.modifier ?? ''),
+    text: String(r.question ?? r.phrase ?? r.text ?? r.suggestion ?? r.query ?? ''),
+    searchVolume: typeof r.searchVolume === 'number' ? r.searchVolume : undefined,
+    cpc: typeof r.cpc === 'number' ? r.cpc : undefined,
+  });
+
+  // ── 1. Primary: Google People Also Ask ────────────────────────────────────
+  if (!rawItems.length) {
+    actorUsed = 'ib4ngz/google-people-also-ask-scraper';
+    for (const kw of keywords) {
+      try {
+        const raw = await runApifyActor<Record<string, unknown>>(
+          'ib4ngz/google-people-also-ask-scraper',
+          { query: kw, maxResults: 30 },
+          apifyToken,
+          { timeoutSecs: 120 }
+        );
+        const mapped = raw
+          .filter(r => r.question ?? r.text ?? r.phrase)
+          .map(r => mapRow(r, 'questions'));
+        rawItems.push(...mapped);
+      } catch { /* try next */ }
     }
   }
 
-  // ── 2. Fallback: nXr538ymPqrcclpen (Keyword Suggestions Scraper) ──────────
+  // ── 2. Fallback: Google Autocomplete ──────────────────────────────────────
   if (!rawItems.length) {
-    actorUsed = 'nXr538ymPqrcclpen';
-    const fallbackInputs = [
-      { keywords, country, language },
-      { keyword: keywords[0], country, language },
-    ];
-    for (const input of fallbackInputs) {
-      if (rawItems.length > 0) break;
+    actorUsed = 'damilo/google-autocomplete-apify';
+    for (const kw of keywords) {
       try {
         const raw = await runApifyActor<Record<string, unknown>>(
-          'nXr538ymPqrcclpen',
+          'damilo/google-autocomplete-apify',
+          { keyword: kw, country: country.toUpperCase(), language },
+          apifyToken,
+          { timeoutSecs: 120 }
+        );
+        const mapped = raw
+          .filter(r => r.suggestion ?? r.text ?? r.query)
+          .map(r => mapRow(r, 'related'));
+        rawItems.push(...mapped);
+      } catch { /* try next */ }
+    }
+  }
+
+  // ── 3. Fallback: deadlyaccurate/answer-the-public ─────────────────────────
+  if (!rawItems.length) {
+    actorUsed = 'deadlyaccurate/answer-the-public';
+    const atpInputs = [
+      { keywords, country, language },
+      { keyword: keywords[0], country, language },
+      { searchTerm: keywords[0], country, language },
+    ];
+    for (const input of atpInputs) {
+      if (rawItems.length) break;
+      try {
+        const raw = await runApifyActor<Record<string, unknown>>(
+          'deadlyaccurate/answer-the-public',
           input,
           apifyToken,
           { timeoutSecs: 150 }
         );
-        // Map to unified ATPItem format
         rawItems = raw
-          .filter(r => r.text || r.suggestion || r.query || r.keyword)
-          .map(r => ({
-            keyword: String(r.keyword ?? keywords[0]),
-            type: String(r.type ?? 'related'),
-            modifier: String(r.modifier ?? ''),
-            text: String(r.text ?? r.suggestion ?? r.query ?? ''),
-            searchVolume: typeof r.searchVolume === 'number' ? r.searchVolume : undefined,
-            cpc: typeof r.cpc === 'number' ? r.cpc : undefined,
-          }));
-      } catch {
-        // try next format
-      }
+          .filter(r => r.text ?? r.phrase)
+          .map(r => mapRow(r, 'questions'));
+      } catch { /* try next */ }
     }
-    if (!rawItems.length) {
-      return {
-        ...empty,
-        findings: ['⚠️ Erro ao consultar AnswerThePublic e actor de fallback via Apify'],
-        dataSources: [`AnswerThePublic via Apify (erro em ambos os actors)`],
-        actorUsed,
-      };
-    }
+  }
+
+  // ── 4. Fallback: nXr538ymPqrcclpen ────────────────────────────────────────
+  if (!rawItems.length) {
+    actorUsed = 'nXr538ymPqrcclpen';
+    try {
+      const raw = await runApifyActor<Record<string, unknown>>(
+        'nXr538ymPqrcclpen',
+        { keywords, country, language },
+        apifyToken,
+        { timeoutSecs: 120 }
+      );
+      rawItems = raw
+        .filter(r => r.text ?? r.suggestion ?? r.query)
+        .map(r => mapRow(r, 'related'));
+    } catch { /* all failed */ }
   }
 
   if (!rawItems.length) {
     return {
       ...empty,
-      findings: [`⚠️ Sem dados retornados para: ${keywords.join(', ')} — tente novamente`],
-      dataSources: [`AnswerThePublic via Apify (${actorUsed})`],
-      actorUsed,
+      findings: [`⚠️ Sem dados de demanda para: ${keywords.join(', ')} — todos os actors retornaram vazio`],
+      dataSources: ['Google PAA + Autocomplete via Apify (sem dados)'],
+      actorUsed: actorUsed || 'nenhum',
     };
   }
 
@@ -288,7 +311,7 @@ export async function fetchDemandIntelligence(
     questionModifiers,
     score: 1,
     findings: [],
-    dataSources: [`AnswerThePublic via Apify (${actorUsed})`],
+    dataSources: [`Inteligência de Demanda via Apify (${actorUsed})`],
     actorUsed,
   };
 

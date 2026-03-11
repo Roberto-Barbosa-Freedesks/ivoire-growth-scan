@@ -96,7 +96,7 @@ export async function fetchAhrefs(
 
   const items = await runApifyActor(
     'radeance/ahrefs-scraper',
-    { urls: [siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`], domain },
+    { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
     apifyToken,
     { timeoutSecs: 90 }
   );

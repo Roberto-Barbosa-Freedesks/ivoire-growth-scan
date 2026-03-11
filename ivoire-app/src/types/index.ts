@@ -164,4 +164,9 @@ export interface AppSettings {
   // Cobre: SimilarWeb · SEMrush · Ahrefs · Google Maps · TikTok ·
   //        Facebook · Instagram · YouTube · AnswerThePublic · LinkedIn
   apifyToken: string;
+
+  // ── Claude / Anthropic API — análise LLM de Jornada de Checkout ──────────
+  // console.anthropic.com → API Keys. Usa claude-haiku (rápido, ~$0.001/diag)
+  // Opcional: se não configurado, usa análise estática como fallback
+  claudeApiKey?: string;
 }

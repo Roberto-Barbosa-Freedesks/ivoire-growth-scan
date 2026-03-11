@@ -92,9 +92,9 @@ export async function fetchSimilarweb(
 
   const items = await runApifyActor(
     'curious_coder/similarweb-scraper',
-    { domains: [domain] },
+    { domain },
     apifyToken,
-    { timeoutSecs: 60 }
+    { timeoutSecs: 90 }
   );
 
   if (!items.length) {

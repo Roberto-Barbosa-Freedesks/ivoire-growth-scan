@@ -84,7 +84,7 @@ export default function Sidebar() {
         <img
           src={`${import.meta.env.BASE_URL}ivoire-logo-yellow.png`}
           alt="Ivoire"
-          style={{ width: '120px', height: 'auto', display: 'block', marginBottom: '6px', mixBlendMode: 'multiply' as const }}
+          style={{ width: '120px', height: 'auto', display: 'block', marginBottom: '6px' }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
         <div

@@ -80,7 +80,7 @@ export async function fetchSemrush(
 
   const items = await runApifyActor(
     'devnaz/semrush-scraper',
-    { domains: [domain] },
+    { domain },
     apifyToken,
     { timeoutSecs: 90 }
   );

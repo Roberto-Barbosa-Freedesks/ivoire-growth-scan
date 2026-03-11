@@ -84,7 +84,7 @@ export async function fetchGooglePlaces(
       userRatingsTotal: null, businessStatus: null, address: null,
       phone: null, website: null, openNow: null, priceLevel: null,
       score: 0, findings: [],
-      error: `Google Places: Requisição negada — ${(findData.error_message as string) ?? 'verifique as restrições da API key no Google Cloud Console'}`,
+      error: `Google Places: Requisição negada — ${(findData.error_message as string) ?? 'verifique as restrições da API key'}. Solução: Google Cloud Console → Credenciais → Restrições HTTP → adicione https://roberto-barbosa-freedesks.github.io/* e http://localhost:5173/*`,
     };
   }
 
