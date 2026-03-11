@@ -84,7 +84,7 @@ export default function Sidebar() {
         <img
           src={`${import.meta.env.BASE_URL}ivoire-logo-yellow.png`}
           alt="Ivoire"
-          style={{ width: '120px', height: 'auto', display: 'block', marginBottom: '6px' }}
+          style={{ width: '120px', height: 'auto', display: 'block', marginBottom: '6px', mixBlendMode: 'multiply' as const }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
         <div
@@ -103,7 +103,7 @@ export default function Sidebar() {
           className="font-mono-display"
           style={{
             fontSize: '9px',
-            color: '#777',
+            color: '#c9c9c9',
             letterSpacing: '1px',
             marginTop: '6px',
           }}
@@ -129,7 +129,7 @@ export default function Sidebar() {
             {totalCount}
           </div>
           <div
-            style={{ fontSize: '9px', color: '#777', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
+            style={{ fontSize: '9px', color: '#c9c9c9', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
           >
             TOTAL
           </div>
@@ -148,7 +148,7 @@ export default function Sidebar() {
             {completedCount}
           </div>
           <div
-            style={{ fontSize: '9px', color: '#777', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
+            style={{ fontSize: '9px', color: '#c9c9c9', fontFamily: 'Montserrat', fontWeight: 600, letterSpacing: '0.5px', marginTop: '2px' }}
           >
             CONCLUÍDOS
           </div>
@@ -162,7 +162,7 @@ export default function Sidebar() {
             fontSize: '9px',
             fontFamily: 'Montserrat',
             fontWeight: 700,
-            color: '#777',
+            color: '#c9c9c9',
             letterSpacing: '1.5px',
             padding: '0 12px',
             marginBottom: '8px',
@@ -318,7 +318,7 @@ export default function Sidebar() {
               <div
                 style={{
                   fontSize: '10px',
-                  color: '#777',
+                  color: '#c9c9c9',
                   fontFamily: 'Arvo',
                   textTransform: 'capitalize',
                   whiteSpace: 'nowrap',

@@ -81,16 +81,21 @@ export async function fetchTiktokProfile(
 
   const d = items[0] as Record<string, unknown>;
 
+  const nn = (val: unknown): number | null => {
+    const n = Number(val);
+    return val != null && val !== '' && !isNaN(n) ? n : null;
+  };
+  const stats = (d.stats ?? d.authorStats ?? {}) as Record<string, unknown>;
   const result: TiktokResult = {
     found: true,
-    username: String(d.uniqueId ?? d.username ?? username),
-    displayName: d.nickname ? String(d.nickname) : d.displayName ? String(d.displayName) : null,
-    followers: d.fans ? Number(d.fans) : d.followerCount ? Number(d.followerCount) : null,
-    following: d.following ? Number(d.following) : null,
-    likes: d.heart ? Number(d.heart) : d.heartCount ? Number(d.heartCount) : null,
-    videoCount: d.video ? Number(d.video) : d.videoCount ? Number(d.videoCount) : null,
-    bio: d.signature ? String(d.signature) : null,
-    verified: !!(d.verified ?? d.isVerified),
+    username: String(d.uniqueId ?? d.username ?? d.author ?? username),
+    displayName: String(d.nickname ?? d.displayName ?? d.name ?? ''),
+    followers: nn(d.fans ?? d.followerCount ?? stats.followerCount ?? stats.fans ?? d.followers),
+    following: nn(d.following ?? d.followingCount ?? stats.followingCount),
+    likes: nn(d.heart ?? d.heartCount ?? stats.heartCount ?? d.diggCount ?? d.likeCount ?? stats.diggCount),
+    videoCount: nn(d.video ?? d.videoCount ?? stats.videoCount ?? d.awemeCount),
+    bio: d.signature ? String(d.signature) : d.bio ? String(d.bio) : null,
+    verified: !!(d.verified ?? d.isVerified ?? d.privateAccount === false),
     profileUrl,
     score: 1,
     findings: [],

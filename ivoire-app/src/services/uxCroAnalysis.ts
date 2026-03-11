@@ -134,10 +134,27 @@ export function analyzeUxCro(
   // NLP search: 0–1 pt
   if (hasNlpSearch) points += 1;
 
+  // CRO signals (D1): social proof, trust, urgency
+  if (scraped?.hasSocialProof) {
+    points += 1;
+    findings.push('✓ Social proof detectado (avaliações, depoimentos, contadores)');
+  }
+  if (scraped?.hasTrustSignals) {
+    points += 1;
+    findings.push('✓ Trust signals detectados (garantia, segurança, frete grátis)');
+  }
+  if (scraped?.hasUrgencySignals) {
+    points += 0.5;
+    findings.push('✓ Gatilho de urgência/escassez detectado');
+  }
+  if (scraped?.hasStickyCtaEl) {
+    findings.push('✓ CTA fixo/sticky detectado (alta visibilidade)');
+  }
+
   let score = 1;
-  if (points >= 8) score = 4;
-  else if (points >= 5.5) score = 3;
-  else if (points >= 3) score = 2;
+  if (points >= 10) score = 4;
+  else if (points >= 7) score = 3;
+  else if (points >= 3.5) score = 2;
 
   return {
     score,

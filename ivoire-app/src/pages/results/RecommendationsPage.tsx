@@ -180,7 +180,7 @@ function RecommendationCard({ rec, isExpanded, onToggle }: {
         {/* Expand chevron */}
         <span
           style={{
-            color: '#555',
+            color: '#e6e1e1',
             fontSize: 16,
             transform: isExpanded ? 'rotate(180deg)' : 'none',
             transition: 'transform 0.2s ease',
@@ -219,7 +219,7 @@ function RecommendationCard({ rec, isExpanded, onToggle }: {
             >
               <div
                 className="font-montserrat"
-                style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
+                style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
               >
                 O Que Fazer
               </div>
@@ -239,7 +239,7 @@ function RecommendationCard({ rec, isExpanded, onToggle }: {
             >
               <div
                 className="font-montserrat"
-                style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
+                style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
               >
                 Por Que
               </div>
@@ -259,7 +259,7 @@ function RecommendationCard({ rec, isExpanded, onToggle }: {
             >
               <div
                 className="font-montserrat"
-                style={{ fontSize: 10, color: '#555', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
+                style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}
               >
                 Impacto Esperado
               </div>
@@ -371,7 +371,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
           <span className="font-bebas" style={{ fontSize: 36, color: '#FFFF02' }}>
             {recommendations.length}
           </span>
-          <p style={{ fontSize: 11, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <p style={{ fontSize: 11, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
             Recomendações
           </p>
         </div>
@@ -379,7 +379,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
           <span className="font-bebas" style={{ fontSize: 36, color: '#ff4d4d' }}>
             {immediateCount}
           </span>
-          <p style={{ fontSize: 11, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <p style={{ fontSize: 11, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
             Imediatas
           </p>
         </div>
@@ -387,12 +387,12 @@ export default function RecommendationsPage({ diagnostic }: Props) {
           <span className="font-bebas" style={{ fontSize: 36, color: '#00cc66' }}>
             {lowEffortCount}
           </span>
-          <p style={{ fontSize: 11, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <p style={{ fontSize: 11, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif', letterSpacing: 0.5, textTransform: 'uppercase' }}>
             Baixo Esforço
           </p>
         </div>
         <div style={{ marginLeft: 'auto', flex: '0 0 auto' }}>
-          <p style={{ fontSize: 11, color: '#555', fontFamily: 'Arvo, serif', margin: 0, maxWidth: 260, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 11, color: '#e6e1e1', fontFamily: 'Arvo, serif', margin: 0, maxWidth: 260, lineHeight: 1.5 }}>
             Ordenadas por prioridade de impacto no score de maturidade digital.
           </p>
         </div>
@@ -404,7 +404,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
         <div style={{ marginBottom: 12 }}>
           <div
             className="font-montserrat"
-            style={{ fontSize: 9, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
+            style={{ fontSize: 9, color: '#e6e1e1', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
           >
             Dimensão
           </div>
@@ -430,7 +430,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
           <div>
             <div
               className="font-montserrat"
-              style={{ fontSize: 9, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
+              style={{ fontSize: 9, color: '#e6e1e1', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
             >
               Esforço
             </div>
@@ -445,7 +445,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
           <div>
             <div
               className="font-montserrat"
-              style={{ fontSize: 9, color: '#555', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
+              style={{ fontSize: 9, color: '#e6e1e1', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}
             >
               Prazo
             </div>
@@ -461,7 +461,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
 
       {/* Results count */}
       {(filterDim !== 'all' || filterEffort !== 'all' || filterTimeframe !== 'all') && (
-        <p style={{ fontSize: 12, color: '#555', fontFamily: 'Montserrat, sans-serif', marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', marginBottom: 16 }}>
           {filtered.length} de {recommendations.length} recomendações
           {' '}
           <button
@@ -476,7 +476,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
       {/* Recommendations list */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <p style={{ color: '#555', fontFamily: 'Arvo, serif', fontSize: 14 }}>
+          <p style={{ color: '#e6e1e1', fontFamily: 'Arvo, serif', fontSize: 14 }}>
             Nenhuma recomendação encontrada com os filtros selecionados.
           </p>
           <button
@@ -502,7 +502,7 @@ export default function RecommendationsPage({ diagnostic }: Props) {
 
       {/* Footer note */}
       <div style={{ marginTop: 36, padding: '16px 20px', borderLeft: '2px solid rgba(255,255,2,0.2)', background: 'rgba(255,255,2,0.03)', borderRadius: '0 4px 4px 0' }}>
-        <p style={{ fontSize: 12, color: '#666', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: '#e6e1e1', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.6 }}>
           As recomendações são ordenadas por impacto potencial no score de maturidade. Recomendações de Baixo Esforço + Impacto Alto devem ser priorizadas para resultados rápidos. O prazo estimado é baseado no esforço de implementação típico para equipes de marketing de médio porte.
         </p>
       </div>

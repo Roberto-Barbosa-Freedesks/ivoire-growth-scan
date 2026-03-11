@@ -163,7 +163,7 @@ export default function ResultsLayout() {
                 >
                   {diagnostic.input.companyName}
                 </h1>
-                <p style={{ color: '#888', fontSize: 12, margin: '4px 0 0', fontFamily: 'Arvo, serif' }}>
+                <p style={{ color: '#c9c9c9', fontSize: 12, margin: '4px 0 0', fontFamily: 'Arvo, serif' }}>
                   {diagnostic.input.siteUrl} · {diagnostic.input.segment}
                 </p>
               </div>
@@ -181,7 +181,7 @@ export default function ResultsLayout() {
               }}
             >
               <div>
-                <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
+                <div style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
                   Score
                 </div>
                 <span
@@ -190,7 +190,7 @@ export default function ResultsLayout() {
                 >
                   {overallScore.toFixed(1)}
                 </span>
-                <span style={{ fontSize: 16, color: '#555', fontFamily: 'Bebas Neue, cursive' }}>/4.0</span>
+                <span style={{ fontSize: 16, color: '#e6e1e1', fontFamily: 'Bebas Neue, cursive' }}>/4.0</span>
               </div>
               <div
                 style={{
@@ -200,7 +200,7 @@ export default function ResultsLayout() {
                 }}
               />
               <div>
-                <div style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
+                <div style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
                   Nível
                 </div>
                 <span
@@ -213,7 +213,7 @@ export default function ResultsLayout() {
                 >
                   {overallLevel}
                 </span>
-                <p style={{ fontSize: 10, color: '#666', margin: '2px 0 0', fontFamily: 'Arvo, serif', maxWidth: 140 }}>
+                <p style={{ fontSize: 10, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Arvo, serif', maxWidth: 140 }}>
                   {levelCfg?.shortDesc}
                 </p>
               </div>

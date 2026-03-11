@@ -38,6 +38,14 @@ export interface ScrapedPageData {
   hasAboutPage: boolean;
   hasContactPage: boolean;
   rawHtmlLength: number;
+  // CRO signals (D1)
+  hasUrgencySignals: boolean;
+  hasSocialProof: boolean;
+  hasTrustSignals: boolean;
+  hasExitIntentPopup: boolean;
+  hasStickyCtaEl: boolean;
+  // E-commerce platform (D3)
+  ecommercePlatform: string | null;
 }
 
 // CORS proxy builders — ordered by reliability
@@ -157,6 +165,17 @@ const AI_CHAT_MARKERS: Array<{ pattern: RegExp; platform: string }> = [
   { pattern: /botmaker/i, platform: 'Botmaker' },
 ];
 
+const ECOMMERCE_PLATFORM_MARKERS: Array<{ pattern: RegExp; platform: string }> = [
+  { pattern: /cdn\.shopify\.com|shopify\.com\/s\/files|window\.Shopify/i, platform: 'Shopify' },
+  { pattern: /vtex\.com|vtexassets\.com|loja\.vtex\.com|window\.vtex/i, platform: 'VTEX' },
+  { pattern: /magento|mage\.js|magentosite/i, platform: 'Magento' },
+  { pattern: /woocommerce|wc-api|window\.woocommerce/i, platform: 'WooCommerce' },
+  { pattern: /lojaintegrada\.com\.br|tcdn\.com\.br/i, platform: 'Loja Integrada' },
+  { pattern: /nuvemshop\.com|tiendanube\.com/i, platform: 'Nuvemshop' },
+  { pattern: /tray\.com\.br|traycheckout/i, platform: 'Tray Commerce' },
+  { pattern: /plataformacris|bling\.com\.br/i, platform: 'Bling' },
+];
+
 const NLP_SEARCH_MARKERS: Array<{ pattern: RegExp; platform: string }> = [
   { pattern: /algolia/i, platform: 'Algolia' },
   { pattern: /typesense/i, platform: 'Typesense' },
@@ -273,6 +292,33 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
     // URL parse error
   }
 
+  // CRO signals — urgency, social proof, trust
+  const hasUrgencySignals =
+    /últimas unidades|por tempo limitado|oferta expira|encerra em|restam apenas|\d+\s*(?:unidade|vaga|item)s?\s*(?:restante|disponível)/i.test(html) ||
+    /expira em|acaba hoje|apenas hoje|só hoje|countdown|timer/i.test(html);
+
+  const hasSocialProof =
+    /\d[\d,.]+\s*(?:avaliações|reviews|clientes|empresas|usuário)/i.test(html) ||
+    /depoimento|testimonial|quem usa|cases de sucesso|nossos clientes|parceiros|aprovado por/i.test(html);
+
+  const hasTrustSignals =
+    /frete\s*(?:grátis|gratuito|free)|garantia|devoluç|reembolso|30 dias|satisf.*garantid/i.test(html) ||
+    /site\s*seguro|ssl|compra\s*segura|dados\s*protegidos|lgpd|certificado/i.test(html);
+
+  const hasExitIntentPopup =
+    /exit.?intent|popup|pop-up|pop_up|onExit|hotmart.*pop|hotmart.*modal/i.test(html) ||
+    /classList.*modal|\.modal-backdrop|\.overlay-popup/i.test(html);
+
+  const hasStickyCtaEl =
+    /position:\s*sticky|position:\s*fixed/.test(html) &&
+    /btn|cta|comprar|assinar|começar|agendar/.test(htmlLower);
+
+  // E-commerce platform detection
+  let ecommercePlatform: string | null = null;
+  for (const { pattern, platform } of ECOMMERCE_PLATFORM_MARKERS) {
+    if (pattern.test(html)) { ecommercePlatform = platform; break; }
+  }
+
   // About / Contact page indicators
   const hasAboutPage = /href=["'][^"']*(?:about|sobre|quem-somos|equipe|team)[^"']*["']/i.test(html);
   const hasContactPage = /href=["'][^"']*(?:contact|contato|fale-conosco)[^"']*["']/i.test(html);
@@ -335,6 +381,12 @@ export function scrapeHTML(url: string, html: string): ScrapedPageData {
     hasAboutPage,
     hasContactPage,
     rawHtmlLength: html.length,
+    hasUrgencySignals,
+    hasSocialProof,
+    hasTrustSignals,
+    hasExitIntentPopup,
+    hasStickyCtaEl,
+    ecommercePlatform,
   };
 }
 

@@ -63,7 +63,7 @@ function ContactCard({ contact, index }: { contact: ApolloContact; index: number
             <div style={{
               background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '4px', padding: '2px 8px',
-              fontSize: '9px', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#666', letterSpacing: '0.8px',
+              fontSize: '9px', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#e6e1e1', letterSpacing: '0.8px',
               flexShrink: 0,
             }}>
               #{index + 1}
@@ -105,7 +105,7 @@ function ContactCard({ contact, index }: { contact: ApolloContact; index: number
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                   <circle cx="12" cy="10" r="3"/>
                 </svg>
-                <span style={{ fontSize: '11px', color: '#777', fontFamily: 'Arvo, serif' }}>
+                <span style={{ fontSize: '11px', color: '#c9c9c9', fontFamily: 'Arvo, serif' }}>
                   {[contact.city, contact.state, contact.country].filter(Boolean).join(', ')}
                 </span>
               </div>
@@ -165,7 +165,7 @@ export default function SummaryPage({ diagnostic }: Props) {
         <h1 className="font-bebas" style={{ fontSize: 42, color: '#fff', margin: '0 0 4px', letterSpacing: 2 }}>
           {diagnostic.input.companyName}
         </h1>
-        <p style={{ fontSize: 13, color: '#888', fontFamily: 'Arvo, serif', margin: 0 }}>
+        <p style={{ fontSize: 13, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0 }}>
           {diagnostic.input.segment} · {diagnostic.input.siteUrl}
           {diagnostic.input.geography === 'regional' && diagnostic.input.geographyDetail
             ? ` · ${diagnostic.input.geographyDetail}` : ''}
@@ -175,7 +175,7 @@ export default function SummaryPage({ diagnostic }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
         {/* Overall score summary */}
         <div className="ivoire-card" style={{ padding: '24px 26px' }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
             Score Global de Maturidade
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -188,7 +188,7 @@ export default function SummaryPage({ diagnostic }: Props) {
                 fontSize: 13, fontFamily: 'Montserrat, sans-serif', fontWeight: 800,
                 color: levelCfg.color, marginBottom: 4,
               }}>{overallLevel}</div>
-              <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.5, margin: 0, maxWidth: 180 }}>
+              <p style={{ fontSize: 12, color: '#c9c9c9', fontFamily: 'Arvo, serif', lineHeight: 1.5, margin: 0, maxWidth: 180 }}>
                 {levelCfg.shortDesc}
               </p>
             </div>
@@ -202,7 +202,7 @@ export default function SummaryPage({ diagnostic }: Props) {
               return (
                 <div key={dimKey} style={{ textAlign: 'center', padding: '8px 6px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div className="font-bebas" style={{ fontSize: 22, color: scoreColor(sc), lineHeight: 1 }}>{sc.toFixed(1)}</div>
-                  <div style={{ fontSize: 9, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5, marginTop: 3 }}>
+                  <div style={{ fontSize: 9, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5, marginTop: 3 }}>
                     {DIMENSION_CONFIG[dimKey].label}
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default function SummaryPage({ diagnostic }: Props) {
 
         {/* Executive narrative */}
         <div className="ivoire-card" style={{ padding: '24px 26px' }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
             Diagnóstico Executivo
           </div>
           {diagnostic.executiveNarrative && (
@@ -231,7 +231,7 @@ export default function SummaryPage({ diagnostic }: Props) {
             ].map(({ label, value, color }) => (
               <div key={label} style={{ textAlign: 'center', padding: '10px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="font-bebas" style={{ fontSize: 28, color, lineHeight: 1 }}>{value}</div>
-                <div style={{ fontSize: 9, color: '#666', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 2 }}>{label}</div>
+                <div style={{ fontSize: 9, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 2 }}>{label}</div>
               </div>
             ))}
           </div>
@@ -246,7 +246,7 @@ export default function SummaryPage({ diagnostic }: Props) {
             Gaps Críticos — Oportunidades de Melhoria
           </div>
           {gaps.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#666', fontFamily: 'Arvo, serif' }}>Sem gaps críticos identificados.</p>
+            <p style={{ fontSize: 12, color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>Sem gaps críticos identificados.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {gaps.slice(0, 5).map((s) => (
@@ -254,7 +254,7 @@ export default function SummaryPage({ diagnostic }: Props) {
                   <span className="font-bebas" style={{ fontSize: 18, color: scoreColor(s.score), minWidth: 26 }}>{s.score.toFixed(1)}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: '#ccc', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>{s.name}</div>
-                    <div style={{ fontSize: 10, color: '#666', fontFamily: 'Arvo, serif' }}>{DIMENSION_CONFIG[s.dimension].name}</div>
+                    <div style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>{DIMENSION_CONFIG[s.dimension].name}</div>
                   </div>
                 </div>
               ))}
@@ -268,7 +268,7 @@ export default function SummaryPage({ diagnostic }: Props) {
             Forças — Diferenciais Competitivos
           </div>
           {strengths.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#666', fontFamily: 'Arvo, serif' }}>Nenhuma força identificada no nível atual.</p>
+            <p style={{ fontSize: 12, color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>Nenhuma força identificada no nível atual.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {strengths.slice(0, 5).map((s) => (
@@ -276,7 +276,7 @@ export default function SummaryPage({ diagnostic }: Props) {
                   <span className="font-bebas" style={{ fontSize: 18, color: scoreColor(s.score), minWidth: 26 }}>{s.score.toFixed(1)}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, color: '#ccc', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>{s.name}</div>
-                    <div style={{ fontSize: 10, color: '#666', fontFamily: 'Arvo, serif' }}>{DIMENSION_CONFIG[s.dimension].name}</div>
+                    <div style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>{DIMENSION_CONFIG[s.dimension].name}</div>
                   </div>
                 </div>
               ))}
@@ -306,7 +306,7 @@ export default function SummaryPage({ diagnostic }: Props) {
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: '#fff', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, lineHeight: 1.4 }}>{rec.title}</div>
-                <div style={{ marginTop: 6, fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.5 }}>{rec.what.slice(0, 100)}{rec.what.length > 100 ? '…' : ''}</div>
+                <div style={{ marginTop: 6, fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', lineHeight: 1.5 }}>{rec.what.slice(0, 100)}{rec.what.length > 100 ? '…' : ''}</div>
                 <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 9, fontFamily: 'Montserrat', fontWeight: 700, padding: '2px 6px', borderRadius: 3,
                     background: rec.effort === 'baixo' ? 'rgba(0,204,102,0.1)' : rec.effort === 'alto' ? 'rgba(255,77,77,0.1)' : 'rgba(255,153,0,0.1)',
@@ -332,7 +332,7 @@ export default function SummaryPage({ diagnostic }: Props) {
             <div className="font-montserrat" style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
               Contatos para Abordagem Comercial
             </div>
-            <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', margin: 0 }}>
+            <p style={{ fontSize: 12, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0 }}>
               Lideranças identificadas em <strong style={{ color: '#ccc' }}>{diagnostic.input.companyName}</strong>
             </p>
           </div>
@@ -348,7 +348,7 @@ export default function SummaryPage({ diagnostic }: Props) {
         {apolloLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px', gap: 12 }}>
             <span className="spin" style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#FFFF02', borderRadius: '50%', display: 'inline-block' }} />
-            <span style={{ fontSize: 13, color: '#777', fontFamily: 'Arvo, serif' }}>Carregando contatos…</span>
+            <span style={{ fontSize: 13, color: '#c9c9c9', fontFamily: 'Arvo, serif' }}>Carregando contatos…</span>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
@@ -387,7 +387,7 @@ export default function SummaryPage({ diagnostic }: Props) {
               <div key={title} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ fontSize: 18, marginBottom: 8, color }}>{icon}</div>
                 <div className="font-montserrat" style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 6 }}>{title}</div>
-                <p style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.6, margin: 0 }}>{desc}</p>
+                <p style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', lineHeight: 1.6, margin: 0 }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -396,8 +396,8 @@ export default function SummaryPage({ diagnostic }: Props) {
         {/* Source attribution */}
         <div style={{ marginTop: 16, padding: '8px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 4, border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize: 10, color: '#555', fontFamily: 'Arvo, serif' }}>
-            Contatos via <strong style={{ color: '#777' }}>Apollo.io</strong> · Prioridade: lideranças de marketing (C-Suite, VP, Director, Manager)
+          <span style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>
+            Contatos via <strong style={{ color: '#c9c9c9' }}>Apollo.io</strong> · Prioridade: lideranças de marketing (C-Suite, VP, Director, Manager)
             {isDemo && ' · Dados de demonstração — configure API Key para dados reais'}
           </span>
         </div>

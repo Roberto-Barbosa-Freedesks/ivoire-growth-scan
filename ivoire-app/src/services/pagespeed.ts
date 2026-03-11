@@ -116,9 +116,18 @@ export async function fetchPageSpeedWithTech(
   url: string,
   apiKey?: string
 ): Promise<{ mobile: PageSpeedData; desktop: PageSpeedData; tech: TechDetectionResult }> {
+  const buildPsiUrl = (strategy: 'mobile' | 'desktop') => {
+    const p = new URLSearchParams({ url, strategy, ...(apiKey ? { key: apiKey } : {}) });
+    p.append('category', 'performance');
+    p.append('category', 'accessibility');
+    p.append('category', 'seo');
+    p.append('category', 'best-practices');
+    return `${PAGESPEED_API}?${p}`;
+  };
+
   const [mobileRes, desktopRes] = await Promise.all([
-    fetch(`${PAGESPEED_API}?${new URLSearchParams({ url, strategy: 'mobile', ...(apiKey ? { key: apiKey } : {}) })}`),
-    fetch(`${PAGESPEED_API}?${new URLSearchParams({ url, strategy: 'desktop', ...(apiKey ? { key: apiKey } : {}) })}`),
+    fetch(buildPsiUrl('mobile')),
+    fetch(buildPsiUrl('desktop')),
   ]);
 
   if (!mobileRes.ok) throw new Error(`PageSpeed mobile error: ${mobileRes.status}`);

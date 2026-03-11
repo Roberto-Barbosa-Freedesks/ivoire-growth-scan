@@ -168,43 +168,62 @@ export async function fetchDemandIntelligence(
   if (!apifyToken) return empty;
 
   // ── 1. Try primary: deadlyaccurate/answer-the-public ─────────────────────
+  // Attempt multiple input formats since the actor API may vary
   let rawItems: ATPItem[] = [];
   let actorUsed = 'deadlyaccurate/answer-the-public';
 
-  try {
-    const raw = await runApifyActor<ATPItem>(
-      'deadlyaccurate/answer-the-public',
-      { keywords, country, language },
-      apifyToken,
-      { timeoutSecs: 120 }
-    );
-    rawItems = raw.filter(i => i.text && i.text.trim().length > 0);
-  } catch {
-    // silent — try fallback
+  const primaryInputs = [
+    { keywords, country, language },
+    { keyword: keywords[0], country, language },
+    { searchTerm: keywords[0], country, language },
+  ];
+  for (const input of primaryInputs) {
+    if (rawItems.length > 0) break;
+    try {
+      const raw = await runApifyActor<ATPItem>(
+        'deadlyaccurate/answer-the-public',
+        input,
+        apifyToken,
+        { timeoutSecs: 150 }
+      );
+      rawItems = raw.filter(i => i.text && i.text.trim().length > 0);
+    } catch {
+      // try next format
+    }
   }
 
   // ── 2. Fallback: nXr538ymPqrcclpen (Keyword Suggestions Scraper) ──────────
   if (!rawItems.length) {
     actorUsed = 'nXr538ymPqrcclpen';
-    try {
-      const raw = await runApifyActor<Record<string, unknown>>(
-        'nXr538ymPqrcclpen',
-        { keywords, country, language },
-        apifyToken,
-        { timeoutSecs: 120 }
-      );
-      // Map to unified ATPItem format
-      rawItems = raw
-        .filter(r => r.text || r.suggestion || r.query || r.keyword)
-        .map(r => ({
-          keyword: String(r.keyword ?? keywords[0]),
-          type: String(r.type ?? 'related'),
-          modifier: String(r.modifier ?? ''),
-          text: String(r.text ?? r.suggestion ?? r.query ?? ''),
-          searchVolume: typeof r.searchVolume === 'number' ? r.searchVolume : undefined,
-          cpc: typeof r.cpc === 'number' ? r.cpc : undefined,
-        }));
-    } catch {
+    const fallbackInputs = [
+      { keywords, country, language },
+      { keyword: keywords[0], country, language },
+    ];
+    for (const input of fallbackInputs) {
+      if (rawItems.length > 0) break;
+      try {
+        const raw = await runApifyActor<Record<string, unknown>>(
+          'nXr538ymPqrcclpen',
+          input,
+          apifyToken,
+          { timeoutSecs: 150 }
+        );
+        // Map to unified ATPItem format
+        rawItems = raw
+          .filter(r => r.text || r.suggestion || r.query || r.keyword)
+          .map(r => ({
+            keyword: String(r.keyword ?? keywords[0]),
+            type: String(r.type ?? 'related'),
+            modifier: String(r.modifier ?? ''),
+            text: String(r.text ?? r.suggestion ?? r.query ?? ''),
+            searchVolume: typeof r.searchVolume === 'number' ? r.searchVolume : undefined,
+            cpc: typeof r.cpc === 'number' ? r.cpc : undefined,
+          }));
+      } catch {
+        // try next format
+      }
+    }
+    if (!rawItems.length) {
       return {
         ...empty,
         findings: ['⚠️ Erro ao consultar AnswerThePublic e actor de fallback via Apify'],

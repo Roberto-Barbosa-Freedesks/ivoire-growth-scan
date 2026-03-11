@@ -112,8 +112,8 @@ function SourceBadge({ source, dataSources, dataReliability }: {
   const map: Record<string, { label: string; color: string; tip: string }> = {
     auto: { label: 'Automático', color: '#00cc66', tip: 'Coletado automaticamente via API.' },
     manual: { label: 'Manual', color: '#ff9900', tip: 'Dado inserido ou ajustado manualmente.' },
-    insufficient: { label: 'Insuficiente', color: '#888', tip: 'Dados insuficientes para avaliação completa.' },
-    skipped: { label: 'Ignorado', color: '#555', tip: 'Subdimensão não aplicável ao perfil avaliado.' },
+    insufficient: { label: 'Insuficiente', color: '#c9c9c9', tip: 'Dados insuficientes para avaliação completa.' },
+    skipped: { label: 'Ignorado', color: '#e6e1e1', tip: 'Subdimensão não aplicável ao perfil avaliado.' },
   };
   const cfg = map[source] ?? map['auto'];
   return (
@@ -215,7 +215,7 @@ function TrafficPie({ channels }: { channels: Record<string, number> }) {
 
   return (
     <div>
-      <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
         Mix de Canais
       </div>
       <ResponsiveContainer width="100%" height={160}>
@@ -291,7 +291,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             Core Web Vitals & PageSpeed
           </div>
           <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
@@ -308,7 +308,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
         </div>
         {tech && (
           <div style={{ marginTop: 16 }}>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
               Tecnologias Detectadas (via PageSpeed)
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
@@ -335,7 +335,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             Tracking Stack Detectado
           </div>
           <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
@@ -371,7 +371,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             Stack MarTech
           </div>
           <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
@@ -386,13 +386,13 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
               <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
         {categories.length > 0 && (
           <div>
-            <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Categorias Cobertas</div>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Categorias Cobertas</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {categories.filter(Boolean).map((cat) => (
                 <span key={cat} style={{ fontSize: 11, color: '#FFFF02', background: 'rgba(255,255,2,0.08)', border: '1px solid rgba(255,255,2,0.2)', borderRadius: 3, padding: '3px 8px', fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
@@ -414,98 +414,156 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
   }
 
   if (score.subdimensionId === 'mix_trafego') {
-    const channels = raw.channels as Record<string, number> | undefined;
-    const traffic = raw.trafficEstimate as number ?? 0;
-    const trend = raw.trend12m as string ?? '';
+    const monthlyVisits = raw.monthlyVisits as number | null ?? null;
+    const trafficBucket = raw.trafficBucket as string | null ?? null;
+    // Normalize channelMix: SimilarWeb returns {direct, search, ...} with nulls; Tranco fallback returns Record<string,number>
+    const rawMix = raw.channelMix as Record<string, number | null> | undefined;
+    const channels: Record<string, number> = {};
+    if (rawMix) {
+      for (const [k, v] of Object.entries(rawMix)) {
+        if (v !== null && v !== undefined && v > 0) channels[k] = typeof v === 'number' ? v : 0;
+      }
+    }
+    const activeChannels = raw.activeChannels as number | null ?? (Object.keys(channels).length || null);
+    const traffic = monthlyVisits ?? 0;
+    const badgeLabel = score.dataSources?.some((s: string) => s.toLowerCase().includes('similarweb'))
+      ? 'Real · SimilarWeb'
+      : score.dataSources?.some((s: string) => s.toLowerCase().includes('tranco'))
+      ? 'Estimado · Tranco'
+      : 'Estimado';
+    const badgeColor = score.dataSources?.some((s: string) => s.toLowerCase().includes('similarweb')) ? '#00cc66' : '#ff9900';
+    const badgeBg = score.dataSources?.some((s: string) => s.toLowerCase().includes('similarweb')) ? 'rgba(0,204,102,0.1)' : 'rgba(255,153,0,0.1)';
+    const badgeBorder = score.dataSources?.some((s: string) => s.toLowerCase().includes('similarweb')) ? 'rgba(0,204,102,0.3)' : 'rgba(255,153,0,0.3)';
 
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             Mix de Tráfego
           </div>
-          <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
-            Estimado · SimilarWeb
+          <span style={{ fontSize: 9, padding: '2px 6px', background: badgeBg, border: `1px solid ${badgeBorder}`, borderRadius: 3, color: badgeColor, fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+            {badgeLabel}
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
           {[
-            { label: 'Tráfego/Mês (estimado)', value: traffic > 0 ? traffic.toLocaleString('pt-BR') : 'N/A', color: traffic > 500000 ? '#FFFF02' : traffic > 50000 ? '#00cc66' : traffic > 5000 ? '#ff9900' : '#ff4d4d' },
-            { label: 'Tendência 12m', value: trend || 'N/A', color: trend === 'crescimento' ? '#00cc66' : '#ff9900' },
-            { label: 'Canais Ativos', value: channels ? String(Object.keys(channels).length) : 'N/A', color: '#FFFF02' },
+            { label: 'Visitas/Mês', value: traffic > 0 ? traffic.toLocaleString('pt-BR') : 'N/A', color: traffic > 500000 ? '#FFFF02' : traffic > 50000 ? '#00cc66' : traffic > 5000 ? '#ff9900' : '#ff4d4d' },
+            { label: 'Faixa de Tráfego', value: trafficBucket || (traffic > 0 ? 'Médio' : 'Baixo'), color: '#ff9900' },
+            { label: 'Canais Ativos', value: activeChannels !== null ? String(activeChannels) : 'N/A', color: '#FFFF02' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
               <div className="font-bebas" style={{ fontSize: 20, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
-        {channels && Object.keys(channels).length > 0 && <TrafficPie channels={channels} />}
+        {Object.keys(channels).length > 0 && <TrafficPie channels={channels} />}
+        {/* Competitor Traffic Benchmarking (E1) */}
+        {Array.isArray(raw.competitorTraffic) && (raw.competitorTraffic as Array<{ url: string; monthlyVisits: number | null; globalRank: number | null; bounceRate: number | null }>).length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Tráfego dos Concorrentes</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'Arvo, serif' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {['Concorrente', 'Visitas/Mês', 'Rank Global', 'Rejeição'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 8px', color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 10, letterSpacing: 0.5 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(raw.competitorTraffic as Array<{ url: string; monthlyVisits: number | null; globalRank: number | null; bounceRate: number | null }>).map((c, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '6px 8px', color: '#e6e1e1' }}>{c.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</td>
+                    <td style={{ padding: '6px 8px', color: '#FFFF02' }}>{c.monthlyVisits != null ? c.monthlyVisits.toLocaleString('pt-BR') : 'N/D'}</td>
+                    <td style={{ padding: '6px 8px', color: '#c9c9c9' }}>{c.globalRank != null ? `#${c.globalRank.toLocaleString('pt-BR')}` : 'N/D'}</td>
+                    <td style={{ padding: '6px 8px', color: c.bounceRate != null && c.bounceRate < 0.4 ? '#00cc66' : '#ff9900' }}>{c.bounceRate != null ? `${(c.bounceRate * 100).toFixed(1)}%` : 'N/D'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }
 
   if (score.subdimensionId === 'presenca_video_audio') {
-    const hasChannel = raw.hasChannel as boolean ?? false;
-    const subscribers = raw.subscribers as number | null ?? null;
-    const videoCount = raw.videoCount as number | null ?? null;
-    const viewCount = raw.viewCount as number | null ?? null;
+    const hasChannel = raw.youtubeChannelFound as boolean ?? false;
+    const subscribers = raw.youtubeSubscribers as number | null ?? null;
+    const videoCount = raw.youtubeVideos as number | null ?? null;
+    const viewCount = raw.youtubeViews as number | null ?? null;
+    const tiktokFound = raw.tiktokFound as boolean ?? false;
+    const tiktokFollowers = raw.tiktokFollowers as number | null ?? null;
+    const tiktokVideos = raw.tiktokVideos as number | null ?? null;
+    const tiktokLikes = raw.tiktokLikes as number | null ?? null;
     const isReal = score.dataReliability === 'real';
+
+    const fmtNum = (n: number) => n > 999999 ? `${(n / 1000000).toFixed(1)}M` : n > 999 ? `${(n / 1000).toFixed(1)}K` : String(n);
 
     return (
       <div style={{ marginTop: 16 }}>
+        {/* YouTube */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
-            Presença em Vídeo
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
+            YouTube
           </div>
           {isReal ? (
             <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.3)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
-              YouTube Data API v3
+              YouTube via Apify
             </span>
           ) : (
             <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
-              {hasChannel ? 'Canal Detectado · Sem API Key' : 'Estimado'}
+              {hasChannel ? 'Canal Detectado · Sem Apify Token' : 'Não detectado'}
             </span>
           )}
         </div>
 
         {!hasChannel ? (
-          <div style={{ padding: '12px 16px', background: 'rgba(255,77,77,0.06)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 6 }}>
+          <div style={{ padding: '12px 16px', background: 'rgba(255,77,77,0.06)', border: '1px solid rgba(255,77,77,0.2)', borderRadius: 6, marginBottom: 16 }}>
             <span style={{ fontSize: 12, color: '#ff9900', fontFamily: 'Arvo, serif' }}>
               Nenhum canal YouTube detectado. Presença em vídeo é um diferencial competitivo crescente — considere criar conteúdo regular.
             </span>
           </div>
         ) : subscribers !== null ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
-              {
-                label: 'Inscritos',
-                value: subscribers > 999999 ? `${(subscribers / 1000000).toFixed(1)}M` : subscribers > 999 ? `${(subscribers / 1000).toFixed(1)}K` : String(subscribers),
-                color: subscribers >= 100000 ? '#FFFF02' : subscribers >= 10000 ? '#00cc66' : subscribers >= 1000 ? '#ff9900' : '#ff4d4d',
-              },
-              {
-                label: 'Vídeos',
-                value: videoCount !== null ? String(videoCount) : 'N/A',
-                color: (videoCount ?? 0) >= 50 ? '#00cc66' : '#ff9900',
-              },
-              {
-                label: 'Visualizações',
-                value: viewCount !== null ? (viewCount > 999999 ? `${(viewCount / 1000000).toFixed(1)}M` : viewCount > 999 ? `${(viewCount / 1000).toFixed(1)}K` : String(viewCount)) : 'N/A',
-                color: '#FFFF02',
-              },
+              { label: 'Inscritos', value: fmtNum(subscribers), color: subscribers >= 100000 ? '#FFFF02' : subscribers >= 10000 ? '#00cc66' : subscribers >= 1000 ? '#ff9900' : '#ff4d4d' },
+              { label: 'Vídeos', value: videoCount !== null ? String(videoCount) : 'N/A', color: (videoCount ?? 0) >= 50 ? '#00cc66' : '#ff9900' },
+              { label: 'Visualizações', value: viewCount !== null ? fmtNum(viewCount) : 'N/A', color: '#FFFF02' },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
                 <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-                <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+                <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ padding: '12px 16px', background: 'rgba(255,153,0,0.06)', border: '1px solid rgba(255,153,0,0.2)', borderRadius: 6 }}>
+          <div style={{ padding: '12px 16px', background: 'rgba(255,153,0,0.06)', border: '1px solid rgba(255,153,0,0.2)', borderRadius: 6, marginBottom: 16 }}>
             <span style={{ fontSize: 12, color: '#ff9900', fontFamily: 'Arvo, serif' }}>
-              Canal YouTube detectado via URL, mas métricas reais requerem YouTube Data API v3. Configure a chave em Configurações para dados precisos.
+              Canal YouTube detectado via URL — configure Apify Token em Configurações para obter métricas reais.
             </span>
           </div>
+        )}
+
+        {/* TikTok */}
+        {(tiktokFound || tiktokFollowers !== null) && (
+          <>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+              TikTok
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {[
+                { label: 'Seguidores', value: tiktokFollowers !== null ? fmtNum(tiktokFollowers) : 'N/A', color: (tiktokFollowers ?? 0) >= 10000 ? '#FFFF02' : '#ff9900' },
+                { label: 'Vídeos', value: tiktokVideos !== null ? String(tiktokVideos) : 'N/A', color: '#00cc66' },
+                { label: 'Likes Totais', value: tiktokLikes !== null ? fmtNum(tiktokLikes) : 'N/A', color: '#FFFF02' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', textAlign: 'center' }}>
+                  <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
+                  <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     );
@@ -520,7 +578,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             SEO Off-Page
           </div>
           <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
@@ -539,10 +597,35 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
                 <InfoTooltip content={tooltip} maxWidth={240} />
               </div>
               <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
+        {/* Competitor Benchmarking (E1) */}
+        {Array.isArray(raw.competitorBenchmark) && (raw.competitorBenchmark as Array<{ url: string; domainRating: number | null; backlinks: number | null; referringDomains: number | null }>).length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Benchmarking de Concorrentes</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'Arvo, serif' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {['Concorrente', 'DR', 'Backlinks', 'Domínios Ref.'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '4px 8px', color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 10, letterSpacing: 0.5 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(raw.competitorBenchmark as Array<{ url: string; domainRating: number | null; backlinks: number | null; referringDomains: number | null }>).map((c, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '6px 8px', color: '#e6e1e1' }}>{c.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</td>
+                    <td style={{ padding: '6px 8px', color: c.domainRating != null && c.domainRating >= 40 ? '#00cc66' : '#ff9900' }}>{c.domainRating ?? 'N/D'}</td>
+                    <td style={{ padding: '6px 8px', color: '#FFFF02' }}>{c.backlinks != null ? (c.backlinks > 999 ? `${(c.backlinks / 1000).toFixed(1)}K` : String(c.backlinks)) : 'N/D'}</td>
+                    <td style={{ padding: '6px 8px', color: '#e6e1e1' }}>{c.referringDomains ?? 'N/D'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     );
   }
@@ -556,7 +639,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
     return (
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+          <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
             Reputação & VOC
           </div>
           <span style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', borderRadius: 3, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
@@ -575,7 +658,7 @@ function SubdimVisuals({ score }: { score: SubdimensionScore }) {
                 <InfoTooltip content={tooltip} maxWidth={240} />
               </div>
               <div className="font-bebas" style={{ fontSize: 22, color }}>{value}</div>
-              <div style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
+              <div style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, marginTop: 4 }}>{label}</div>
             </div>
           ))}
         </div>
@@ -645,7 +728,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
             }}>E-COMM</span>
           )}
           {subdimDef?.description && (
-            <div style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', marginTop: 3 }}>
+            <div style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', marginTop: 3 }}>
               {subdimDef.description.slice(0, 80)}{subdimDef.description.length > 80 ? '…' : ''}
             </div>
           )}
@@ -674,7 +757,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
             <div>
               {subdimDef?.description && (
                 <div style={{ marginBottom: 14 }}>
-                  <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                     Sobre Esta Subdimensão
                   </div>
                   <p style={{ fontSize: 12, color: '#aaa', fontFamily: 'Arvo, serif', lineHeight: 1.6, margin: 0 }}>
@@ -684,7 +767,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
               )}
 
               <div>
-                <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                   Critério Atual — {level}
                 </div>
                 <div style={{
@@ -702,7 +785,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
 
               {subdimDef?.kpis && (
                 <div style={{ marginTop: 14 }}>
-                  <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
                     KPIs Avaliados
                   </div>
                   <p style={{ fontSize: 11, color: '#aaa', fontFamily: 'Arvo, serif', lineHeight: 1.5, margin: 0 }}>
@@ -732,7 +815,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
             {/* Right: Raw data table */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>
+                <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>
                   Dados Coletados
                 </div>
                 {score.dataReliability === 'real' && (
@@ -772,7 +855,7 @@ function SubdimRow({ score, subdimDef, isExpanded, onToggle }: {
                 </div>
               ) : (
                 <div style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
                     Dados detalhados requerem integração com APIs externas (SimilarWeb, Semrush, etc.).
                   </p>
                 </div>
@@ -815,7 +898,7 @@ function SubdimBarChart({ scores }: { scores: SubdimensionScore[] }) {
 
   return (
     <div>
-      <div className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
+      <div className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
         Comparativo de Scores
       </div>
       <ResponsiveContainer width="100%" height={data.length * 44 + 20}>
@@ -882,7 +965,7 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
           <DimensionRadial score={score} />
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <span className="font-bebas" style={{ fontSize: 28, color: scoreColor(score), lineHeight: 1 }}>{score.toFixed(2)}</span>
-            <span style={{ fontSize: 9, color: '#888', fontFamily: 'Montserrat, sans-serif' }}>/4.0</span>
+            <span style={{ fontSize: 9, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif' }}>/4.0</span>
           </div>
         </div>
 
@@ -896,7 +979,7 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
           </h1>
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <LevelBadge level={level} />
-            <span style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif' }}>{relevantSubdims.length} subdimensões avaliadas</span>
+            <span style={{ fontSize: 12, color: '#c9c9c9', fontFamily: 'Arvo, serif' }}>{relevantSubdims.length} subdimensões avaliadas</span>
             {realCount > 0 && (
               <span style={{ fontSize: 10, padding: '2px 7px', background: 'rgba(0,204,102,0.1)', border: '1px solid rgba(0,204,102,0.25)', borderRadius: 3, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
                 {realCount} real{realCount > 1 ? 'is' : ''}
@@ -918,7 +1001,7 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
             { label: 'Gap Crítico', value: worstSubdim?.score?.toFixed(1) ?? '–', color: '#ff4d4d' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '6px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 5, border: '1px solid rgba(255,255,255,0.07)' }}>
-              <span style={{ fontSize: 10, color: '#888', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5 }}>{label}</span>
+              <span style={{ fontSize: 10, color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5 }}>{label}</span>
               <span className="font-bebas" style={{ fontSize: 20, color }}>{value}</span>
             </div>
           ))}
@@ -932,17 +1015,17 @@ export default function DimensionPage({ diagnostic, dimensionKey }: Props) {
 
       {/* Table header */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px auto auto auto', gap: 16, padding: '10px 22px', alignItems: 'center' }}>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Subdimensão</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Score</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Nível</span>
-        <span className="font-montserrat" style={{ fontSize: 10, color: '#888', letterSpacing: 1, textTransform: 'uppercase' }}>Fonte</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>Subdimensão</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>Score</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>Nível</span>
+        <span className="font-montserrat" style={{ fontSize: 10, color: '#c9c9c9', letterSpacing: 1, textTransform: 'uppercase' }}>Fonte</span>
         <span />
       </div>
 
       {/* Subdimension rows */}
       <div className="ivoire-card" style={{ overflow: 'hidden' }}>
         {dimensionSubdims.length === 0 ? (
-          <p style={{ padding: 24, color: '#888', fontFamily: 'Arvo, serif', textAlign: 'center' }}>
+          <p style={{ padding: 24, color: '#c9c9c9', fontFamily: 'Arvo, serif', textAlign: 'center' }}>
             Nenhuma subdimensão disponível.
           </p>
         ) : (

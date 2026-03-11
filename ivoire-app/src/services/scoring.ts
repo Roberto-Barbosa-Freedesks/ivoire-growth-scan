@@ -158,7 +158,7 @@ export function generateRecommendations(
 
   for (const score of sorted) {
     const recs = RECOMMENDATIONS_LIBRARY[score.subdimensionId];
-    if (recs) {
+    if (recs && Array.isArray(recs)) {
       for (const rec of recs) {
         recommendations.push({
           ...rec,

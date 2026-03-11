@@ -55,7 +55,7 @@ const INSIGHT_TYPE_CONFIG: Record<InsightType, InsightTypeConfig> = {
 const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; order: number }> = {
   alta: { label: 'Prioridade Alta', color: '#ff4d4d', order: 1 },
   media: { label: 'Prioridade Média', color: '#ff9900', order: 2 },
-  baixa: { label: 'Prioridade Baixa', color: '#555', order: 3 },
+  baixa: { label: 'Prioridade Baixa', color: '#a6a6a6', order: 3 },
 };
 
 function TypeBadge({ type }: { type: InsightType }) {
@@ -191,10 +191,10 @@ function InsightCard({ insight }: { insight: Insight }) {
             borderLeft: `3px solid ${typeCfg.color}`,
           }}
         >
-          <span style={{ fontSize: 11, color: '#555', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 11, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
             Impacto
           </span>
-          <p style={{ fontSize: 12, color: '#888', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: 0, lineHeight: 1.5 }}>
             {insight.impactEstimate}
           </p>
         </div>
@@ -242,7 +242,7 @@ export default function InsightsPage({ diagnostic }: Props) {
       >
         <div
           className="font-montserrat"
-          style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}
+          style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}
         >
           Sumário Executivo de Insights
         </div>
@@ -251,7 +251,7 @@ export default function InsightsPage({ diagnostic }: Props) {
             <span className="font-bebas" style={{ fontSize: 40, color: '#FFFF02' }}>
               {insights.length}
             </span>
-            <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+            <p style={{ fontSize: 12, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
               Insights Gerados
             </p>
           </div>
@@ -259,7 +259,7 @@ export default function InsightsPage({ diagnostic }: Props) {
             <span className="font-bebas" style={{ fontSize: 40, color: '#ff4d4d' }}>
               {gapCount}
             </span>
-            <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+            <p style={{ fontSize: 12, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
               Gaps Críticos
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function InsightsPage({ diagnostic }: Props) {
             <span className="font-bebas" style={{ fontSize: 40, color: '#ff9900' }}>
               {highPriorityCount}
             </span>
-            <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+            <p style={{ fontSize: 12, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
               Prioridade Alta
             </p>
           </div>
@@ -275,7 +275,7 @@ export default function InsightsPage({ diagnostic }: Props) {
             <span className="font-bebas" style={{ fontSize: 40, color: '#00cc66' }}>
               {oportunidades.length}
             </span>
-            <p style={{ fontSize: 12, color: '#666', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+            <p style={{ fontSize: 12, color: '#e6e1e1', margin: '2px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
               Oportunidades
             </p>
           </div>
@@ -284,7 +284,7 @@ export default function InsightsPage({ diagnostic }: Props) {
 
       {insights.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60 }}>
-          <p style={{ color: '#555', fontFamily: 'Arvo, serif' }}>
+          <p style={{ color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>
             Nenhum insight gerado. Execute a coleta de dados primeiro.
           </p>
         </div>
@@ -328,7 +328,7 @@ export default function InsightsPage({ diagnostic }: Props) {
                 <span
                   style={{
                     fontSize: 11,
-                    color: '#555',
+                    color: '#e6e1e1',
                     fontFamily: 'Montserrat, sans-serif',
                   }}
                 >
@@ -338,7 +338,7 @@ export default function InsightsPage({ diagnostic }: Props) {
                 <span
                   style={{
                     fontSize: 11,
-                    color: '#555',
+                    color: '#e6e1e1',
                     fontFamily: 'Montserrat, sans-serif',
                     minWidth: 20,
                     textAlign: 'right',

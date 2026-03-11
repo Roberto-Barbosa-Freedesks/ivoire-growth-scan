@@ -34,8 +34,15 @@ function extractDomain(url: string): string {
 
 function num(val: unknown): number | null {
   if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const n = parseFloat(str);
+  const s = String(val).trim();
+  // Handle shorthand: "10K" → 10000, "1.2M" → 1200000, "5B" → 5000000000
+  const shorthand = s.match(/^([0-9.,]+)\s*([KMBkmb])$/);
+  if (shorthand) {
+    const base = parseFloat(shorthand[1].replace(',', '.'));
+    const mult = { k: 1e3, m: 1e6, b: 1e9 }[shorthand[2].toLowerCase()] ?? 1;
+    return isNaN(base) ? null : Math.round(base * mult);
+  }
+  const n = parseFloat(s.replace(/[^0-9.]/g, ''));
   return isNaN(n) ? null : n;
 }
 
@@ -75,7 +82,7 @@ export async function fetchSemrush(
     'devnaz/semrush-scraper',
     { domains: [domain] },
     apifyToken,
-    { timeoutSecs: 60 }
+    { timeoutSecs: 90 }
   );
 
   if (!items.length) {

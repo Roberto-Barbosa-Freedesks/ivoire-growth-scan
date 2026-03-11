@@ -260,7 +260,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div className="font-montserrat" style={{ fontSize: '11px', fontWeight: 700, color: '#777', letterSpacing: '3px', marginBottom: '32px' }}>
+          <div className="font-montserrat" style={{ fontSize: '11px', fontWeight: 700, color: '#c9c9c9', letterSpacing: '3px', marginBottom: '32px' }}>
             IVOIRE.COM.BR
           </div>
 
@@ -268,7 +268,7 @@ export default function LoginPage() {
           <img
             src={`${BASE_URL}ivoire-logo-yellow.png`}
             alt="Ivoire"
-            style={{ width: '220px', height: 'auto', marginBottom: '12px', display: 'block' }}
+            style={{ width: '220px', height: 'auto', marginBottom: '12px', display: 'block', mixBlendMode: 'multiply' as const }}
             onError={(e) => {
               // Fallback to text if image fails
               (e.target as HTMLImageElement).style.display = 'none';
@@ -294,7 +294,7 @@ export default function LoginPage() {
 
         {/* Maturity levels */}
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: '9px', fontFamily: 'Montserrat', fontWeight: 700, color: '#777', letterSpacing: '2px', marginBottom: '14px' }}>
+          <div style={{ fontSize: '9px', fontFamily: 'Montserrat', fontWeight: 700, color: '#c9c9c9', letterSpacing: '2px', marginBottom: '14px' }}>
             NÍVEIS DE MATURIDADE
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -307,7 +307,7 @@ export default function LoginPage() {
               <div key={lvl.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: lvl.color, boxShadow: `0 0 6px ${lvl.color}80`, flexShrink: 0 }} />
                 <span style={{ fontFamily: 'Montserrat', fontSize: '11px', fontWeight: 700, color: lvl.color, letterSpacing: '0.5px', width: '90px' }}>{lvl.name}</span>
-                <span className="font-mono-display" style={{ fontSize: '10px', color: '#777' }}>{lvl.range}</span>
+                <span className="font-mono-display" style={{ fontSize: '10px', color: '#c9c9c9' }}>{lvl.range}</span>
               </div>
             ))}
           </div>
@@ -347,7 +347,7 @@ export default function LoginPage() {
                   </div>
                 );
               })}
-              <span style={{ fontSize: '10px', color: '#777', fontFamily: 'Montserrat, sans-serif', marginLeft: '4px' }}>
+              <span style={{ fontSize: '10px', color: '#c9c9c9', fontFamily: 'Montserrat, sans-serif', marginLeft: '4px' }}>
                 {mode === 'register_email' ? 'Email' : mode === 'register_verify' ? 'Verificação' : 'Senha'}
               </span>
             </div>
@@ -369,7 +369,7 @@ export default function LoginPage() {
               <div className="font-bebas" style={{ fontSize: '36px', color: '#FFFF02', letterSpacing: '8px' }}>
                 {demoCodeVisible}
               </div>
-              <p style={{ fontSize: '11px', color: '#888', fontFamily: 'Arvo, serif', margin: '6px 0 0' }}>
+              <p style={{ fontSize: '11px', color: '#c9c9c9', fontFamily: 'Arvo, serif', margin: '6px 0 0' }}>
                 Configure EmailJS nas Configurações para envio real de emails.
               </p>
             </div>
@@ -419,7 +419,7 @@ export default function LoginPage() {
                   style={{ letterSpacing: '6px', fontSize: '18px', textAlign: 'center', fontFamily: 'Bebas Neue, cursive' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <span style={{ fontSize: '11px', color: '#666', fontFamily: 'Arvo, serif' }}>
+                  <span style={{ fontSize: '11px', color: '#e6e1e1', fontFamily: 'Arvo, serif' }}>
                     Expira em 15 minutos
                   </span>
                   <button type="button" onClick={handleResendCode} disabled={loading}
@@ -445,7 +445,7 @@ export default function LoginPage() {
                   />
                   <button
                     type="button" onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#777', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#c9c9c9', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   >
                     {showPassword ? (
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -516,7 +516,7 @@ export default function LoginPage() {
           {/* Mode switch links */}
           <div style={{ marginTop: '24px', textAlign: 'center' }}>
             {mode === 'login' ? (
-              <p style={{ fontFamily: 'Arvo, serif', fontSize: '12px', color: '#666', margin: 0 }}>
+              <p style={{ fontFamily: 'Arvo, serif', fontSize: '12px', color: '#e6e1e1', margin: 0 }}>
                 Primeiro acesso?{' '}
                 <button type="button" onClick={() => switchMode('register_email')}
                   style={{ background: 'none', border: 'none', color: '#FFFF02', fontSize: '12px', cursor: 'pointer', fontFamily: 'Arvo, serif', padding: 0, fontWeight: 700 }}>
@@ -525,7 +525,7 @@ export default function LoginPage() {
               </p>
             ) : (
               <button type="button" onClick={() => switchMode('login')}
-                style={{ background: 'none', border: 'none', color: '#777', fontSize: '12px', cursor: 'pointer', fontFamily: 'Arvo, serif', padding: 0, display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
+                style={{ background: 'none', border: 'none', color: '#c9c9c9', fontSize: '12px', cursor: 'pointer', fontFamily: 'Arvo, serif', padding: 0, display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                 Voltar ao login
               </button>
@@ -538,7 +538,7 @@ export default function LoginPage() {
               <div style={{ fontSize: '9px', fontFamily: 'Montserrat', fontWeight: 700, color: '#FFFF02', letterSpacing: '1.5px', marginBottom: '7px' }}>
                 ACESSO DEMO
               </div>
-              <p style={{ fontFamily: 'Arvo, serif', fontSize: '12px', color: '#888', margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontFamily: 'Arvo, serif', fontSize: '12px', color: '#c9c9c9', margin: 0, lineHeight: 1.6 }}>
                 Use <span style={{ color: '#FFFF02', fontWeight: 700 }}>demo@ivoire.ag</span> com qualquer senha
                 <br />
                 ou qualquer email <span style={{ color: '#FFFF02' }}>@ivoire.ag</span>

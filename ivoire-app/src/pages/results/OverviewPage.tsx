@@ -156,7 +156,7 @@ export default function OverviewPage({ diagnostic }: Props) {
           <div>
             <div
               className="font-montserrat"
-              style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}
+              style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}
             >
               Score Global de Maturidade Digital
             </div>
@@ -177,7 +177,7 @@ export default function OverviewPage({ diagnostic }: Props) {
 
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
               <LevelBadge level={overallLevel} />
-              <span style={{ color: '#666', fontSize: 12, fontFamily: 'Arvo, serif' }}>
+              <span style={{ color: '#e6e1e1', fontSize: 12, fontFamily: 'Arvo, serif' }}>
                 Framework 4Cs Ivoire
               </span>
             </div>
@@ -270,7 +270,7 @@ export default function OverviewPage({ diagnostic }: Props) {
         >
           <div
             className="font-montserrat"
-            style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}
+            style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}
           >
             Radar de Maturidade — 4Cs
           </div>
@@ -354,7 +354,7 @@ export default function OverviewPage({ diagnostic }: Props) {
                 <ScoreBar score={score} />
               </div>
 
-              <p style={{ fontSize: 11, color: '#555', margin: '10px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
+              <p style={{ fontSize: 11, color: '#e6e1e1', margin: '10px 0 0', fontFamily: 'Montserrat, sans-serif' }}>
                 {subdimCount} subdimensões
               </p>
             </div>
@@ -364,7 +364,7 @@ export default function OverviewPage({ diagnostic }: Props) {
 
       {/* Dimension bar chart */}
       <div className="ivoire-card" style={{ padding: '24px 28px', marginBottom: 28 }}>
-        <div className="font-montserrat" style={{ fontSize: 10, color: '#666', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+        <div className="font-montserrat" style={{ fontSize: 10, color: '#e6e1e1', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
           Score por Dimensão — Comparativo Visual
         </div>
         <ResponsiveContainer width="100%" height={180}>
@@ -393,7 +393,7 @@ export default function OverviewPage({ diagnostic }: Props) {
           {[{ label: 'Intuitivo', range: '1.0–1.74', color: '#ff4d4d' }, { label: 'Reativo', range: '1.75–2.49', color: '#ff9900' }, { label: 'Ativo', range: '2.50–3.24', color: '#00cc66' }, { label: 'Exponencial', range: '3.25–4.0', color: '#FFFF02' }].map(({ label, range, color }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-              <span style={{ fontSize: 10, color: '#666', fontFamily: 'Montserrat, sans-serif' }}>{label} ({range})</span>
+              <span style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif' }}>{label} ({range})</span>
             </div>
           ))}
         </div>
@@ -424,7 +424,7 @@ export default function OverviewPage({ diagnostic }: Props) {
           <div key={label} className="ivoire-card" style={{ padding: '20px 22px', textAlign: 'center' }}>
             <div className="font-bebas" style={{ fontSize: 48, color, lineHeight: 1 }}>{value}</div>
             <div className="font-montserrat" style={{ fontSize: 11, fontWeight: 700, color: '#aaa', marginTop: 4, letterSpacing: 0.5 }}>{label}</div>
-            <div style={{ fontSize: 11, color: '#555', fontFamily: 'Arvo, serif', marginTop: 4 }}>{sub}</div>
+            <div style={{ fontSize: 11, color: '#e6e1e1', fontFamily: 'Arvo, serif', marginTop: 4 }}>{sub}</div>
           </div>
         ))}
       </div>

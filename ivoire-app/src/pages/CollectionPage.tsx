@@ -327,7 +327,7 @@ export default function CollectionPage() {
         <div className="font-montserrat" style={{ fontSize: 9, color: '#FFFF02', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
           Fontes de Dados Reais
         </div>
-        <div style={{ fontSize: 11, color: '#888', fontFamily: 'Arvo, serif', lineHeight: 1.7 }}>
+        <div style={{ fontSize: 11, color: '#c9c9c9', fontFamily: 'Arvo, serif', lineHeight: 1.7 }}>
           <strong style={{ color: '#ccc' }}>Sempre reais:</strong> PageSpeed API · HTML scraping (SEO, Schema, UX) · Mercado Livre API<br />
           <strong style={{ color: '#ccc' }}>Real se configurado:</strong> YouTube (Apify) · TikTok (Apify) · LinkedIn (Apify) · Instagram (Apify) · Google Places API · Meta Ad Library<br />
           <strong style={{ color: '#ccc' }}>Apify ativo:</strong> SimilarWeb · SEMrush · Ahrefs (+ benchmarking de concorrentes) · Google Maps 50 avaliações · AnswerThePublic<br />
@@ -348,7 +348,7 @@ export default function CollectionPage() {
         <div className="progress-bar" style={{ height: 6 }}>
           <div className="progress-bar-fill" style={{ width: `${progressPct}%`, height: '100%' }} />
         </div>
-        <p style={{ color: '#666', fontSize: 12, marginTop: 10 }}>
+        <p style={{ color: '#e6e1e1', fontSize: 12, marginTop: 10 }}>
           {completedCount} de {totalCount} subdimensões coletadas
           {isFinalized && (
             <span style={{ color: '#00cc66', marginLeft: 12 }}>✓ Análise concluída — redirecionando…</span>
@@ -369,7 +369,7 @@ export default function CollectionPage() {
               <h2 className="font-montserrat" style={{ fontSize: 13, fontWeight: 700, color: dimConfig.color, letterSpacing: 2, margin: 0, textTransform: 'uppercase' }}>
                 {dimConfig.label}
               </h2>
-              <span style={{ fontSize: 11, color: '#666', fontFamily: 'Montserrat, sans-serif' }}>{dimCompleted}/{dimSubdims.length}</span>
+              <span style={{ fontSize: 11, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif' }}>{dimCompleted}/{dimSubdims.length}</span>
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.07)' }} />
             </div>
 
@@ -434,7 +434,7 @@ export default function CollectionPage() {
                     {status === 'completed' && !isInsufficient && <span style={{ fontSize: 10, color: '#00cc66', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Concluído</span>}
                     {status === 'completed' && isInsufficient && <span style={{ fontSize: 10, color: '#ff9900', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Config. necessária</span>}
                     {status === 'error' && <span style={{ fontSize: 10, color: '#ff4d4d', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Erro</span>}
-                    {status === 'pending' && <span style={{ fontSize: 10, color: '#555', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Aguardando</span>}
+                    {status === 'pending' && <span style={{ fontSize: 10, color: '#e6e1e1', fontFamily: 'Montserrat, sans-serif', fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Aguardando</span>}
                     {status === 'collecting' && <span style={{ fontSize: 10, color: '#FFFF02', fontFamily: 'Montserrat, sans-serif', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Coletando</span>}
                   </div>
                 );

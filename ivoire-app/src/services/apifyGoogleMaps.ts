@@ -55,9 +55,17 @@ function calcScore(r: GoogleMapsResult): number {
   return 1;
 }
 
+function extractDomain(url: string): string {
+  try {
+    return new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, '');
+  } catch {
+    return url.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+  }
+}
+
 export async function fetchGoogleMapsEnriched(
   companyName: string,
-  _siteUrl: string,
+  siteUrl: string,
   apifyToken: string,
   maxReviews = 50
 ): Promise<GoogleMapsResult> {
@@ -70,20 +78,32 @@ export async function fetchGoogleMapsEnriched(
 
   if (!apifyToken) return empty;
 
-  // Use company name as search query — Apify will find the Google Maps listing
-  const items = await runApifyActor(
-    'compass/crawler-google-places',
-    {
-      searchStringsArray: [companyName],
-      language: 'pt',
-      maxReviews,
-      reviewsSort: 'newest',
-      includeWebResults: false,
-      maxCrawledPlacesPerSearch: 1,
-    },
-    apifyToken,
-    { timeoutSecs: 90 }
-  );
+  const domain = siteUrl ? extractDomain(siteUrl) : '';
+  // Try 2 search variations: name only → name + domain
+  const searchVariants = [companyName];
+  if (domain && domain.length > 3) searchVariants.push(`${companyName} ${domain}`);
+
+  let items: unknown[] = [];
+  for (const query of searchVariants) {
+    try {
+      items = await runApifyActor(
+        'compass/crawler-google-places',
+        {
+          searchStringsArray: [query],
+          language: 'pt',
+          maxReviews,
+          reviewsSort: 'newest',
+          includeWebResults: false,
+          maxCrawledPlacesPerSearch: 3,
+        },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch {
+      // try next variant
+    }
+    if (items.length > 0) break;
+  }
 
   if (!items.length) {
     return {
@@ -93,7 +113,16 @@ export async function fetchGoogleMapsEnriched(
     };
   }
 
-  const d = items[0] as Record<string, unknown>;
+  // Pick the best match: prefer result whose website contains the domain
+  let best = items[0] as Record<string, unknown>;
+  if (domain && items.length > 1) {
+    const domMatch = (items as Array<Record<string, unknown>>).find((item) => {
+      const w = String(item.website ?? '').toLowerCase();
+      return w.includes(domain);
+    });
+    if (domMatch) best = domMatch;
+  }
+  const d = best;
 
   const rawReviews = (d.reviews ?? []) as Array<Record<string, unknown>>;
   const reviews: GoogleMapsReview[] = rawReviews.map((r) => ({
@@ -121,8 +150,8 @@ export async function fetchGoogleMapsEnriched(
   const result: GoogleMapsResult = {
     found: true,
     name: String(d.title ?? d.name ?? companyName),
-    rating: d.totalScore ? Number(d.totalScore) : d.rating ? Number(d.rating) : null,
-    reviewsCount: d.reviewsCount ? Number(d.reviewsCount) : null,
+    rating: d.totalScore != null ? Number(d.totalScore) : d.rating != null ? Number(d.rating) : null,
+    reviewsCount: d.reviewsCount != null ? Number(d.reviewsCount) : d.reviews_count != null ? Number(d.reviews_count) : d.ratingCount != null ? Number(d.ratingCount) : null,
     reviews,
     avgResponseRate,
     sentimentScore,

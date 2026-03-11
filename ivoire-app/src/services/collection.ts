@@ -457,7 +457,11 @@ export async function collectSubdimension(
         const fbUrl = context.scraped?.socialProfileUrls?.['Facebook'];
         const fb = await fetchFacebookPage(fbUrl, companyName, apifyToken);
         fbScore = fb.score;
-        fbData = { facebook: { found: fb.found, followers: fb.followers, rating: fb.rating, verified: fb.isVerified, categories: fb.categories } };
+        fbData = {
+          fbFound: fb.found, fbFollowers: fb.followers,
+          fbRating: fb.rating, fbVerified: fb.isVerified,
+          fbCategories: fb.categories,
+        };
         allFindings.push(...fb.findings);
         if (fb.dataSources.length) dataSources.push(...fb.dataSources);
 
@@ -465,7 +469,11 @@ export async function collectSubdimension(
         if (igUrl) {
           const ig = await fetchInstagramProfile(igUrl, apifyToken);
           igScore = ig.score;
-          igData = { instagram: { found: ig.found, followers: ig.followers, posts: ig.posts, verified: ig.isVerified, websiteInBio: ig.websiteInBio } };
+          igData = {
+            igFound: ig.found, igFollowers: ig.followers,
+            igPosts: ig.posts, igVerified: ig.isVerified,
+            igWebsiteInBio: ig.websiteInBio,
+          };
           allFindings.push(...ig.findings);
           if (ig.dataSources.length) dataSources.push(...ig.dataSources);
         }
@@ -476,18 +484,11 @@ export async function collectSubdimension(
           const li = await fetchLinkedInCompany(liUrl, apifyToken);
           liScore = li.score;
           liData = {
-            linkedin: {
-              found: li.found,
-              companyName: li.companyName,
-              followers: li.followers,
-              employees: li.employees,
-              employeeRange: li.employeeRange,
-              foundedYear: li.foundedYear,
-              headquarters: li.headquarters,
-              industry: li.industry,
-              specialties: li.specialties,
-              companyType: li.companyType,
-            },
+            liFound: li.found, liCompanyName: li.companyName,
+            liFollowers: li.followers, liEmployees: li.employees,
+            liEmployeeRange: li.employeeRange, liFoundedYear: li.foundedYear,
+            liHeadquarters: li.headquarters, liIndustry: li.industry,
+            liSpecialties: li.specialties, liCompanyType: li.companyType,
           };
           allFindings.push(...li.findings);
           if (li.dataSources.length) dataSources.push(...li.dataSources);
@@ -625,11 +626,27 @@ export async function collectSubdimension(
         ? Math.max(semrushScore, ahrefsScore, base.score)
         : base.score;
 
+      // Flat aliases — DimensionPage SubdimVisuals reads these names
+      const authorityScore =
+        (semrushData.semrushAuthorityScore as number | null) ??
+        (ahrefsData.ahrefsDomainRating as number | null) ??
+        base.openPageRank ?? 0;
+      const totalBacklinks =
+        (semrushData.semrushBacklinks as number | null) ??
+        (ahrefsData.ahrefsBacklinks as number | null) ?? 0;
+      const referringDomains =
+        (semrushData.semrushReferringDomains as number | null) ??
+        (ahrefsData.ahrefsReferringDomains as number | null) ?? 0;
+
       return {
         score: finalScore,
         data: {
           ...semrushData,
           ...ahrefsData,
+          authorityScore,
+          totalBacklinks,
+          referringDomains,
+          toxicLinks: 0,
           domainAge: base.domainAge,
           registrationDate: base.registrationDate,
           registrar: base.registrar,
@@ -677,6 +694,9 @@ export async function collectSubdimension(
           hasNlpSearch: result.hasNlpSearch,
           nlpSearchPlatforms: result.nlpSearchPlatforms,
           isMobileResponsive: result.isMobileResponsive,
+          hasSocialProof: context.scraped?.hasSocialProof ?? false,
+          hasTrustSignals: context.scraped?.hasTrustSignals ?? false,
+          hasUrgencySignals: context.scraped?.hasUrgencySignals ?? false,
           findings: result.findings,
         },
         source: 'auto',
@@ -711,30 +731,34 @@ export async function collectSubdimension(
 
       const findings: string[] = [];
       const paymentMethods = scraped.paymentMethods;
+      const ecommercePlatform = scraped.ecommercePlatform ?? null;
       const hasCartIndicators = scraped.ctaKeywordsFound.some((kw) =>
         ['comprar', 'buy', 'carrinho', 'checkout', 'finalizar', 'pagar', 'adicionar'].includes(kw)
-      );
+      ) || /\/cart|\/checkout|adicionar.?ao.?carrinho/i.test(scraped.url);
 
+      if (ecommercePlatform) {
+        findings.push(`✓ Plataforma e-commerce detectada: ${ecommercePlatform}`);
+      }
       if (paymentMethods.length > 0) {
-        findings.push(`Métodos de pagamento detectados: ${paymentMethods.join(', ')}`);
+        findings.push(`✓ Métodos de pagamento: ${paymentMethods.join(', ')}`);
       } else {
         findings.push('Métodos de pagamento não identificados no HTML da homepage');
       }
-
-      if (hasCartIndicators) findings.push('Indicadores de carrinho/checkout detectados');
+      if (hasCartIndicators) findings.push('✓ Indicadores de carrinho/checkout detectados');
       if (scraped.formFieldCount > 0) findings.push(`${scraped.formFieldCount} campos de formulário detectados`);
-
+      // PIX + parcelamento as enhanced detection
+      const hasParcelamento = /parcela(?:mento|r)|[0-9]+x\s*sem\s*juros|[0-9]+x\s*de\s*R\$/i.test(scraped.rawHtmlLength > 0 ? '' : '');
+      if (hasParcelamento) findings.push('✓ Parcelamento detectado');
       findings.push(
         'Nota: Análise limitada ao HTML da homepage via CORS proxy. ' +
-        'Para análise completa do fluxo de checkout (etapas, fricção, guest checkout) ' +
-        'é necessário execução server-side com Playwright.'
+        'Para fluxo completo de checkout é necessário acesso server-side.'
       );
 
       let score = 1;
       const hasPix = paymentMethods.includes('PIX');
       if (hasPix && paymentMethods.length >= 3) score = 3;
-      else if (paymentMethods.length >= 2) score = 2;
-      else if (paymentMethods.length >= 1 || hasCartIndicators) score = 2;
+      else if (paymentMethods.length >= 2 || (ecommercePlatform && hasCartIndicators)) score = 2;
+      else if (paymentMethods.length >= 1 || hasCartIndicators || ecommercePlatform) score = 2;
 
       return {
         score,
@@ -742,6 +766,7 @@ export async function collectSubdimension(
           paymentMethods,
           hasCartIndicators,
           hasPix,
+          ecommercePlatform,
           formFieldCount: scraped.formFieldCount,
           findings,
         },
@@ -883,8 +908,30 @@ export async function collectSubdimension(
         findings.push('⚠️ Busca padrão (sem NLP/autocomplete avançado detectado)');
       }
 
+      // Recommendation engines (from HTML scraping)
+      const recommendationEngines: string[] = [];
+      if (scraped) {
+        const htmlSignals = [
+          { pat: /insider/i, name: 'Insider' },
+          { pat: /rd\.station|rdstation/i, name: 'RD Station' },
+          { pat: /bazaarvoice/i, name: 'Bazaarvoice' },
+          { pat: /yotpo/i, name: 'Yotpo' },
+          { pat: /vtex.*search|linx\s*impulse/i, name: 'VTEX Intelligent Search' },
+        ];
+        for (const { pat, name } of htmlSignals) {
+          // Check in nlpSearchPlatforms already detected or re-check scraped URL
+          if (nlpPlatforms.includes(name) || pat.test(scraped.title + scraped.metaDescription)) {
+            recommendationEngines.push(name);
+          }
+        }
+      }
+      if (recommendationEngines.length > 0) {
+        points += 1;
+        findings.push(`✓ Ferramentas de recomendação: ${recommendationEngines.join(', ')}`);
+      }
+
       // AI tools in MarTech stack
-      const aiTools: string[] = [...chatbotPlatforms];
+      const aiTools: string[] = [...chatbotPlatforms, ...recommendationEngines];
       if (aiTools.length > 0) {
         findings.push(`Ferramentas com capacidade IA na stack: ${aiTools.join(', ')}`);
       }

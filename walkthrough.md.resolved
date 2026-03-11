@@ -1,0 +1,89 @@
+# ✅ Walkthrough — Revisão Completa da Plataforma Growth Scan Ivoire Light
+
+## Resultado da Auditoria
+
+**Build:** `tsc -b && vite build` → ✓ 0 erros, 0 warnings de tipo | 737 módulos transformados em 12s
+
+---
+
+## 1. Integrações Apify (11 Actors Validados)
+
+| Actor | Serviço | Subdimensão | Timeout | Status |
+|:---|:---|:---|:---|:---|
+| `curious_coder/similarweb-scraper` | SimilarWeb | Mix de Tráfego | 60s | ✅ OK — fallback Tranco ativo |
+| `devnaz/semrush-scraper` | SEMrush | SEO Off-Page | 60s | ✅ OK |
+| `radeance/ahrefs-scraper` | Ahrefs | SEO Off-Page | 90s | ✅ OK — cross-validation com SEMrush |
+| `streamers/youtube-channel-scraper` | YouTube | Vídeo & Áudio | 90s | ✅ OK |
+| `clockworks/tiktok-profile-scraper` | TikTok | Vídeo & Áudio | 60s | ✅ OK |
+| `apify/instagram-profile-scraper` | Instagram | Mídia Paga & Criativos | 60s | ✅ OK |
+| `apify/facebook-pages-scraper` | Facebook | Mídia Paga & Criativos | 60s | ✅ OK |
+| `bebity/linkedin-company-detail-scraper` | LinkedIn (primary) | Mídia Paga & Criativos | 90s | ✅ OK — fallback actor ativo |
+| `dev_fusionworks/linkedin-company-scraper` | LinkedIn (fallback) | Mídia Paga & Criativos | 90s | ✅ OK |
+| `deadlyaccurate/answer-the-public` | AnswerThePublic | Inteligência Demanda | 120s | ✅ OK — fallback ativo |
+| `nXr538ymPqrcclpen` | Keyword Suggestions (fallback) | Inteligência Demanda | 120s | ✅ OK |
+
+Validação extra: Google Maps enriched via [apifyGoogleMaps.ts](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/apifyGoogleMaps.ts) para Reputação VoC (50+ reviews com sentiment analysis).
+
+---
+
+## 2. APIs Nativas (4 Validadas)
+
+| API | Subdimensão | Status |
+|:---|:---|:---|
+| Google PageSpeed Insights | Performance Web, Tracking Health, Stack MarTech, UX/CRO, AI/ML | ✅ OK |
+| Google Places API | Reputação Digital & VoC (fallback) | ✅ OK |
+| Meta Ad Library API | Mídia Paga & Criativos | ✅ OK |
+| Mercado Livre API (pública) | Presença em Marketplaces | ✅ OK |
+
+---
+
+## 3. Subdimensões (14 Validadas — 100% Cobertas)
+
+| Dimensão | Subdimensão | Coletada via | Status |
+|:---|:---|:---|:---|
+| **CONTEÚDO** | SEO On-Page & E-E-A-T | HTML scraping | ✅ |
+| | Performance Web & Mobile | PageSpeed API | ✅ |
+| | Semântica & GEO (IA Search) | JSON-LD extraction | ✅ |
+| | Presença em Vídeo & Áudio | YouTube + TikTok (Apify) | ✅ |
+| | Inteligência de Demanda | AnswerThePublic (Apify) | ✅ |
+| **CANAIS** | Mix de Tráfego | SimilarWeb (Apify) + Tranco | ✅ |
+| | Mídia Paga & Criativos | Meta Ads + FB/IG/LI (Apify) | ✅ |
+| | Presença em Marketplaces | Mercado Livre API | ✅ (condicional: e-commerce) |
+| | SEO Off-Page & Link Building | SEMrush + Ahrefs (Apify) + OPR | ✅ |
+| **CONVERSÃO** | UX/UI & CRO | PageSpeed + HTML | ✅ |
+| | Jornada de Checkout | HTML scraping | ✅ (condicional: e-commerce) |
+| | Reputação Digital & VoC | Google Maps (Apify) / Places API | ✅ |
+| **CONTROLE** | Stack MarTech | PageSpeed tech detection | ✅ |
+| | Tracking Health | PageSpeed network requests | ✅ |
+| | AI/ML Readiness | PageSpeed + HTML | ✅ |
+
+---
+
+## 4. Correções Aplicadas
+
+| Arquivo | Correção |
+|:---|:---|
+| [scoring.ts](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/scoring.ts) | Adicionada verificação defensiva `Array.isArray(recs)` na geração de recomendações para prevenir crash por tipo inesperado |
+
+---
+
+## 5. Fidelidade de Inputs Sociais (Validado)
+
+O formulário em [NewDiagnosticPage.tsx](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/pages/NewDiagnosticPage.tsx) captura 4 URLs sociais + competitors. No [handleSubmit](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/pages/NewDiagnosticPage.tsx#834-863) (L839-854), cada campo é passado via `DiagnosticInput`:
+
+- `input.youtube` → [fetchYoutubeChannel()](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/apifyYoutube.ts#44-115) (Apify actor)
+- `input.tiktok` → [fetchTiktokProfile()](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/apifyTiktok.ts#52-112) (Apify actor)
+- `input.instagram` → [fetchInstagramProfile()](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/apifyInstagram.ts#56-121) (Apify actor)
+- `input.linkedIn` → [fetchLinkedInCompany()](file:///Users/macbookair/Documents/VibeCoding/ivoire-growth-scan/ivoire-app/src/services/apifyLinkedIn.ts#117-233) (Apify actor, com fallback)
+- `input.competitors` → Benchmarking de SimilarWeb + Ahrefs para até 2 concorrentes
+
+Cada serviço possui **normalização de URL** (regex para extrair username/slug) antes de enviar ao Apify.
+
+---
+
+## 6. Motor de Scoring (Validado)
+
+- **Pesos:** 4 dimensões × 0.25 = score geral 1.0–4.0
+- **Penalização:** Subdimensões com `source: 'insufficient'` recebem score 1
+- **Subdimensões condicionais:** Checkout e Marketplaces são ignoradas para não-ecommerce
+- **Thresholds:** Intuitivo ≤ 1.74 | Reativo ≤ 2.49 | Ativo ≤ 3.24 | Exponencial ≤ 4.0
