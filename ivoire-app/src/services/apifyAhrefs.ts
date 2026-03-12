@@ -94,12 +94,29 @@ export async function fetchAhrefs(
 
   if (!apifyToken) return empty;
 
-  const items = await runApifyActor(
-    'radeance/ahrefs-scraper',
-    { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
-    apifyToken,
-    { timeoutSecs: 90 }
-  );
+  let items: unknown[] = [];
+
+  // Primary: domain input (radeance/ahrefs-scraper preferred format)
+  try {
+    items = await runApifyActor(
+      'radeance/ahrefs-scraper',
+      { domain },
+      apifyToken,
+      { timeoutSecs: 90 }
+    );
+  } catch { /* fall through */ }
+
+  // Fallback: url input format
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'radeance/ahrefs-scraper',
+        { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {

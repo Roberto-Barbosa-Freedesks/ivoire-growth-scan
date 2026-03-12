@@ -49,23 +49,32 @@ export interface ScrapedPageData {
 }
 
 // CORS proxy builders — ordered by reliability
+// Direct fetch first (fast, works when site allows CORS)
+// Then multiple proxy fallbacks for resilience
 const PROXY_BUILDERS: Array<(url: string) => string> = [
+  (url) => url, // Direct fetch — works for sites with permissive CORS
   (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+  (url) => `https://cors.eu.org/${url}`,
 ];
 
-export async function fetchPageHTML(url: string, timeoutMs = 15000): Promise<string | null> {
+export async function fetchPageHTML(url: string, timeoutMs = 20000): Promise<string | null> {
   for (const buildProxy of PROXY_BUILDERS) {
     try {
       const proxyUrl = buildProxy(url);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(proxyUrl, { signal: controller.signal });
+      const res = await fetch(proxyUrl, {
+        signal: controller.signal,
+        headers: { 'Accept': 'text/html,application/xhtml+xml,*/*' },
+      });
       clearTimeout(timer);
       if (res.ok) {
         const text = await res.text();
-        if (text.length > 200) return text;
+        // Reject proxy error pages (allorigins wraps 404 as ok with short body)
+        if (text.length > 500 && !text.includes('"status":{"http_code":0}')) return text;
       }
     } catch {
       // Try next proxy

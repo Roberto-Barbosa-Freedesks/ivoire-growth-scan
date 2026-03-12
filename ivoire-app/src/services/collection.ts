@@ -182,9 +182,28 @@ export async function collectSubdimension(
     case 'seo_onpage_eeat': {
       const scraped = context.scraped;
       if (!scraped) {
+        // Graceful degradation: use PageSpeed SEO score when HTML is unavailable
+        const psScore = context.desktop?.seoScore ?? context.mobile?.seoScore ?? null;
+        if (psScore !== null) {
+          const degradedScore = psScore >= 90 ? 3 : psScore >= 70 ? 2 : 1;
+          return {
+            score: degradedScore,
+            data: {
+              pagespeedSeoScore: psScore,
+              htmlUnavailable: true,
+              findings: [
+                '⚠️ HTML do site não acessível via CORS proxy — análise baseada somente no PageSpeed.',
+                `PageSpeed SEO Score: ${psScore}/100`,
+              ],
+            },
+            source: 'auto',
+            dataReliability: 'real',
+            dataSources: ['Google PageSpeed Insights (SEO score — HTML indisponível via CORS)'],
+          };
+        }
         return insufficient(
-          'Não foi possível acessar o HTML do site via CORS proxy. O site pode bloquear requests externos.',
-          'Nenhuma configuração necessária — verifique se o site permite acesso externo'
+          'HTML inacessível via CORS proxy e PageSpeed não disponível.',
+          'pageSpeedApiKey'
         );
       }
       const result = analyzeSeoOnPage(scraped, context.desktop as never);
@@ -227,10 +246,32 @@ export async function collectSubdimension(
     case 'semantica_geo': {
       const scraped = context.scraped;
       if (!scraped) {
-        return insufficient(
-          'Não foi possível acessar o HTML do site via CORS proxy.',
-          'Nenhuma configuração necessária — verifique se o site permite acesso externo'
-        );
+        // Graceful degradation: return score=1 with explanation (not "insufficient")
+        const apifyTokenSGFb = settings.apifyToken ?? '';
+        let geoLlmDataFb: Record<string, unknown> = {};
+        const sgDataSourcesFb = ['HTML indisponível via CORS proxy'];
+        if (apifyTokenSGFb) {
+          const gptFb = await fetchGptSearch(companyName, input.segment, apifyTokenSGFb);
+          if (gptFb.found || gptFb.query) {
+            geoLlmDataFb = { llmBrandMentioned: gptFb.brandMentioned, llmFindings: gptFb.findings };
+            sgDataSourcesFb.push(...gptFb.dataSources);
+          }
+        }
+        return {
+          score: geoLlmDataFb.llmBrandMentioned ? 2 : 1,
+          data: {
+            htmlUnavailable: true,
+            schemaTypes: [],
+            schemaCount: 0,
+            jsonLdCount: 0,
+            geoVisibility: false,
+            findings: ['⚠️ HTML do site não acessível via CORS proxy — análise de Schema/JSON-LD indisponível.', ...((geoLlmDataFb.llmFindings as string[]) ?? [])],
+            ...geoLlmDataFb,
+          },
+          source: 'auto',
+          dataReliability: 'real',
+          dataSources: sgDataSourcesFb,
+        };
       }
       const result = analyzeSemanticaGeo(scraped);
       const sgDataSources = ['Extração JSON-LD do site (CORS proxy)'];
@@ -333,12 +374,24 @@ export async function collectSubdimension(
         if (tt.dataSources.length) dataSources.push(...tt.dataSources);
       }
 
-      // No data at all
+      // No data at all — return score=1 with explanation (not "insufficient")
       if (dataSources.length === 0 && !tiktokUrl) {
-        return insufficient(
-          'URL de YouTube não fornecida e Apify Token não configurado. TikTok não configurado.',
-          'apifyToken'
-        );
+        return {
+          score: 1,
+          data: {
+            youtubeChannelFound: false,
+            tiktokFound: false,
+            findings: [
+              '⚠️ URL de YouTube/TikTok não fornecida.',
+              apifyTokenYt
+                ? 'Configure URL do canal YouTube/TikTok no cadastro para análise de presença em vídeo.'
+                : 'Configure Apify Token em Configurações e informe a URL do canal YouTube.',
+            ],
+          },
+          source: 'auto',
+          dataReliability: 'real',
+          dataSources: [],
+        };
       }
 
       const finalScore = Math.max(ytScore, tiktokScore);
@@ -860,10 +913,23 @@ export async function collectSubdimension(
             'googlePlacesApiKey ou apifyToken'
           );
         }
-        return insufficient(
-          'Empresa não encontrada no Google Maps via Apify. Configure googlePlacesApiKey como fallback.',
-          'googlePlacesApiKey'
-        );
+        // Apify was used but business not found — return score=1 (not "insufficient")
+        return {
+          score: 1,
+          data: {
+            googleRating: null,
+            googleReviews: null,
+            findings: [
+              `⚠️ "${companyName}" não encontrado no Google Maps via Apify.`,
+              'Configure googlePlacesApiKey em Configurações para usar o Google Places API como fallback.',
+              ...allFindings,
+            ],
+            reclameAquiNote: 'Reclame Aqui: verificar manualmente em reclameaqui.com.br.',
+          },
+          source: 'auto',
+          dataReliability: 'real',
+          dataSources: ['Google Maps via Apify (empresa não encontrada)'],
+        };
       }
 
       const result = await fetchGooglePlaces(companyName, siteUrl, settings.googlePlacesApiKey);

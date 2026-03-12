@@ -86,10 +86,11 @@ export async function fetchYoutubeChannel(
   let actorUsed = '';
 
   // Primary: streamers/youtube-scraper
+  // maxResults: 1 ensures at least the channel metadata item is returned
   try {
     items = await runApifyActor(
       'streamers/youtube-scraper',
-      { startUrls: [{ url: channelUrl }], maxResults: 0 },
+      { startUrls: [{ url: channelUrl }], maxResults: 1 },
       apifyToken,
       { timeoutSecs: 60 }
     ) as Record<string, unknown>[];
@@ -101,7 +102,7 @@ export async function fetchYoutubeChannel(
     try {
       items = await runApifyActor(
         'streamers/youtube-channel-scraper',
-        { startUrls: [{ url: channelUrl }], maxResultsShorts: 0, maxResultsStreams: 0, maxResults: 0 },
+        { startUrls: [{ url: channelUrl }], maxResultsShorts: 0, maxResultsStreams: 0, maxResults: 1 },
         apifyToken,
         { timeoutSecs: 90 }
       ) as Record<string, unknown>[];

@@ -100,7 +100,7 @@ export async function fetchSimilarweb(
   try {
     items = await runApifyActor(
       'epctex/similarweb-scraper',
-      { url: domain, startUrls: [{ url: `https://www.similarweb.com/website/${domain}/` }] },
+      { startUrls: [{ url: `https://www.similarweb.com/website/${domain}/` }] },
       apifyToken,
       { timeoutSecs: 90 }
     );
