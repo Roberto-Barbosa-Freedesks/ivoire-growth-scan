@@ -93,7 +93,34 @@ export async function collectSubdimension(
     // TRACKING HEALTH — real via PageSpeed network requests
     // ────────────────────────────────────────────────────────────────────
     case 'tracking_health': {
-      if (!context.tech) return insufficient('PageSpeed não executado', 'pageSpeedApiKey');
+      if (!context.tech) {
+        // HTML partial fallback: derive signals from scraped data
+        const scraped = context.scraped;
+        const chatPlatforms = scraped?.aiChatPlatforms ?? [];
+        if (scraped?.aiChatPlatforms?.includes('HubSpot') && !chatPlatforms.includes('HubSpot')) chatPlatforms.push('HubSpot');
+        const hubspotFromChat = chatPlatforms.some((p) => /hubspot/i.test(p));
+        const intercomFromChat = chatPlatforms.some((p) => /intercom/i.test(p));
+        const partialFindings = [
+          '⚠️ PageSpeed API não disponível — pixels e tags de rastreamento não analisados via rede.',
+          'Configure VITE_PAGESPEED_API_KEY para análise completa de GTM, GA4, Meta Pixel, etc.',
+          ...(chatPlatforms.length > 0 ? [`✓ Ferramentas de chat/CRM detectadas no HTML: ${chatPlatforms.join(', ')}`] : []),
+        ];
+        return {
+          score: chatPlatforms.length > 0 ? 2 : 1,
+          data: {
+            htmlFallback: true,
+            gtmPresent: false, ga4Configured: false, metaPixel: false,
+            linkedinInsightTag: false, tiktokPixel: false,
+            hotjarInstalled: false,
+            hubspotInstalled: hubspotFromChat,
+            intercomInstalled: intercomFromChat,
+            consentModeV2: false, thirdPartyDomains: [], totalThirdParties: 0,
+            findings: partialFindings,
+          },
+          source: 'auto', dataReliability: 'real',
+          dataSources: ['Análise HTML (parcial — pixels/tags requerem PageSpeed API)'],
+        };
+      }
       const tech = context.tech;
       const score = scoreTechDetection(tech);
       return {
@@ -121,7 +148,57 @@ export async function collectSubdimension(
     // STACK MARTECH — real via PageSpeed network requests
     // ────────────────────────────────────────────────────────────────────
     case 'stack_martech': {
-      if (!context.tech) return insufficient('PageSpeed não executado', 'pageSpeedApiKey');
+      if (!context.tech) {
+        // HTML partial fallback: infer MarTech stack from scraped signals
+        const scraped = context.scraped;
+        const partialCategories: string[] = [];
+        const chatPlatforms = scraped?.aiChatPlatforms ?? [];
+        if (chatPlatforms.some((p) => /hubspot/i.test(p))) partialCategories.push('CRM/Automação (HubSpot)');
+        if (chatPlatforms.some((p) => /intercom/i.test(p))) partialCategories.push('Suporte/Chat (Intercom)');
+        if (chatPlatforms.length > 0 && !partialCategories.length) partialCategories.push(`Chat (${chatPlatforms[0]})`);
+        if (scraped?.ecommercePlatform) partialCategories.push(`E-commerce (${scraped.ecommercePlatform})`);
+        if (scraped?.nlpSearchPlatforms?.length) partialCategories.push(`Busca Avançada (${scraped.nlpSearchPlatforms[0]})`);
+
+        const smFindings = [
+          '⚠️ PageSpeed API não disponível — análise completa de stack MarTech indisponível.',
+          'Configure VITE_PAGESPEED_API_KEY para detectar GTM, GA4, Meta Pixel, HubSpot, etc.',
+          ...(partialCategories.length > 0 ? [`✓ Ferramentas detectadas via HTML: ${partialCategories.join(', ')}`] : []),
+        ];
+
+        // Still try BuiltWith if Apify is configured
+        let builtWithPartial: Record<string, unknown> = {};
+        if (settings.apifyToken) {
+          const bwP = await fetchBuiltWith(siteUrl, settings.apifyToken);
+          if (bwP.found) {
+            builtWithPartial = { builtWithCategories: bwP.categories, builtWithFindings: bwP.findings };
+            if (bwP.categories.cms.length) partialCategories.push(`CMS (${bwP.categories.cms.slice(0, 2).join(', ')})`);
+            if (bwP.categories.ecommerce.length) partialCategories.push(`E-commerce (${bwP.categories.ecommerce.slice(0, 2).join(', ')})`);
+            smFindings.push(...bwP.findings);
+          }
+        }
+
+        return {
+          score: partialCategories.length >= 3 ? 2 : 1,
+          data: {
+            htmlFallback: true,
+            categoriesCovered: partialCategories,
+            totalTechnologies: 0,
+            gtmInstalled: false, ga4Installed: false, metaPixel: false,
+            linkedinInsightTag: false, tiktokPixel: false,
+            hotjarInstalled: false,
+            hubspotInstalled: chatPlatforms.some((p) => /hubspot/i.test(p)),
+            intercomInstalled: chatPlatforms.some((p) => /intercom/i.test(p)),
+            consentModeV2: false, thirdPartyDomains: [],
+            findings: smFindings,
+            ...builtWithPartial,
+          },
+          source: 'auto', dataReliability: 'real',
+          dataSources: [
+            'Análise HTML (parcial — stack completo requer PageSpeed API)',
+            ...(settings.apifyToken ? ['BuiltWith via Apify'] : []),
+          ],
+        };
+      }
       const tech = context.tech;
       const score = scoreTechDetection(tech);
       const categoriesCovered: string[] = [];
@@ -772,7 +849,80 @@ export async function collectSubdimension(
     // ────────────────────────────────────────────────────────────────────
     case 'ux_ui_cro': {
       if (!context.mobile || !context.desktop) {
-        return insufficient('PageSpeed não executado', 'pageSpeedApiKey');
+        // HTML-only fallback: analyze UX signals without PageSpeed scores
+        const scraped = context.scraped;
+        if (!scraped) {
+          return {
+            score: 1,
+            data: {
+              findings: [
+                '⚠️ PageSpeed API não disponível e HTML não acessível via CORS.',
+                'Configure VITE_PAGESPEED_API_KEY para análise completa de UX/CRO.',
+              ],
+            },
+            source: 'auto', dataReliability: 'real', dataSources: [],
+          };
+        }
+        // Derive signals from HTML alone (skip perf/accessibility scores)
+        const htmlChatbots: string[] = [...(scraped.aiChatPlatforms ?? [])];
+        if (context.tech?.intercomInstalled && !htmlChatbots.includes('Intercom')) htmlChatbots.push('Intercom');
+        if (context.tech?.hubspotInstalled && !htmlChatbots.includes('HubSpot Chat')) htmlChatbots.push('HubSpot Chat');
+        const hasChatbotHtml = htmlChatbots.length > 0;
+        const ctaCountHtml = scraped.ctaKeywordsFound.length;
+        const formCountHtml = scraped.formFieldCount;
+        const formComplexityHtml: 'baixa' | 'média' | 'alta' | 'não detectada' =
+          formCountHtml > 8 ? 'alta' : formCountHtml > 3 ? 'média' : formCountHtml > 0 ? 'baixa' : 'não detectada';
+
+        const htmlFindings: string[] = [
+          '⚠️ PageSpeed API não disponível — scores de acessibilidade/performance não medidos.',
+        ];
+        if (scraped.hasWAMeLink) htmlFindings.push('✓ WhatsApp Business (wa.me) detectado');
+        else if (scraped.hasWhatsAppLink) htmlFindings.push('✓ Link WhatsApp detectado');
+        else htmlFindings.push('⚠️ WhatsApp não identificado no site');
+        if (hasChatbotHtml) htmlFindings.push(`✓ Chat/Chatbot: ${htmlChatbots.join(', ')}`);
+        if (ctaCountHtml >= 3) htmlFindings.push(`✓ ${ctaCountHtml} CTAs identificados`);
+        else if (ctaCountHtml > 0) htmlFindings.push(`⚠️ ${ctaCountHtml} CTA(s) identificado(s) — pode melhorar`);
+        if (scraped.hasSocialProof) htmlFindings.push('✓ Social proof detectado (avaliações, depoimentos)');
+        if (scraped.hasTrustSignals) htmlFindings.push('✓ Trust signals detectados (garantia, segurança)');
+        if (scraped.hasUrgencySignals) htmlFindings.push('✓ Gatilho de urgência/escassez detectado');
+        if (scraped.hasNlpSearchIndicators) htmlFindings.push(`✓ Busca inteligente/NLP: ${scraped.nlpSearchPlatforms.join(', ')}`);
+        if (formCountHtml > 0) htmlFindings.push(`Formulários: ${formCountHtml} campo(s) — complexidade ${formComplexityHtml}`);
+
+        let htmlPts = 0;
+        if (scraped.hasWAMeLink) htmlPts += 1; else if (scraped.hasWhatsAppLink) htmlPts += 0.5;
+        if (hasChatbotHtml) htmlPts += 1;
+        if (ctaCountHtml >= 3) htmlPts += 1; else if (ctaCountHtml >= 1) htmlPts += 0.5;
+        if (scraped.hasSocialProof) htmlPts += 1;
+        if (scraped.hasTrustSignals) htmlPts += 1;
+        if (scraped.hasUrgencySignals) htmlPts += 0.5;
+        if (scraped.hasNlpSearchIndicators) htmlPts += 1;
+        if (formComplexityHtml === 'baixa' || formComplexityHtml === 'não detectada') htmlPts += 1;
+        const htmlScore = htmlPts >= 7 ? 4 : htmlPts >= 4 ? 3 : htmlPts >= 2 ? 2 : 1;
+
+        return {
+          score: htmlScore,
+          data: {
+            accessibilityScore: null,
+            mobileScore: null,
+            bestPracticesScore: null,
+            hasWhatsApp: scraped.hasWhatsAppLink,
+            hasWhatsAppBusiness: scraped.hasWAMeLink,
+            hasChatbot: hasChatbotHtml,
+            chatbotPlatforms: htmlChatbots,
+            ctaCount: ctaCountHtml,
+            formFieldCount: formCountHtml,
+            formComplexity: formComplexityHtml,
+            hasNlpSearch: scraped.hasNlpSearchIndicators,
+            nlpSearchPlatforms: scraped.nlpSearchPlatforms,
+            isMobileResponsive: true, // cannot determine without PageSpeed
+            hasSocialProof: scraped.hasSocialProof,
+            hasTrustSignals: scraped.hasTrustSignals,
+            hasUrgencySignals: scraped.hasUrgencySignals,
+            findings: htmlFindings,
+          },
+          source: 'auto', dataReliability: 'real',
+          dataSources: ['Análise HTML do site (CORS proxy — PageSpeed não disponível)'],
+        };
       }
       const result = analyzeUxCro(
         context.scraped ?? null,
@@ -1105,10 +1255,60 @@ export async function collectSubdimension(
       const apifyToken = settings.apifyToken ?? '';
 
       if (!apifyToken) {
-        return insufficient(
-          'Apify Token não configurado. Configure em Configurações para mapear a demanda via AnswerThePublic.',
-          'apifyToken'
-        );
+        // Free fallback: Google Autocomplete via CORS proxy (no API key needed)
+        const brandQuery = companyName.toLowerCase();
+        const autocompleteQueries = [brandQuery, `${brandQuery} como`, `${brandQuery} qual`];
+        const suggestions: string[] = [];
+        for (const q of autocompleteQueries) {
+          try {
+            const acUrl = `https://corsproxy.io/?${encodeURIComponent(`https://suggestqueries.google.com/complete/search?client=firefox&hl=pt&q=${encodeURIComponent(q)}`)}`;
+            const resp = await fetch(acUrl, { signal: AbortSignal.timeout(8000) });
+            if (resp.ok) {
+              const data = await resp.json() as unknown[];
+              if (Array.isArray(data) && Array.isArray(data[1])) {
+                for (const s of (data[1] as unknown[]).slice(0, 5)) {
+                  const str = String(s);
+                  if (!suggestions.includes(str)) suggestions.push(str);
+                }
+              }
+            }
+          } catch { /* skip */ }
+        }
+        if (suggestions.length > 0) {
+          return {
+            score: 2,
+            data: {
+              keywordsSearched: [brandQuery],
+              totalItems: suggestions.length,
+              totalQuestions: 0,
+              topQuestions: [],
+              competitorComparisons: [],
+              autocompleteSuggestions: suggestions,
+              actorUsed: 'google-autocomplete-cors',
+              findings: [
+                `✓ ${suggestions.length} sugestões de busca encontradas para "${companyName}"`,
+                `Sugestões: ${suggestions.slice(0, 5).join(' | ')}`,
+                '⚠️ Configure apifyToken para análise completa via AnswerThePublic (perguntas, comparações, volume de busca).',
+              ],
+            },
+            source: 'auto', dataReliability: 'real',
+            dataSources: ['Google Autocomplete (suggestqueries.google.com — fallback gratuito)'],
+          };
+        }
+        // Autocomplete also failed — return score=1 without "insufficient" penalty
+        return {
+          score: 1,
+          data: {
+            keywordsSearched: [],
+            totalItems: 0,
+            topQuestions: [],
+            findings: [
+              '⚠️ Apify Token não configurado — análise de demanda limitada.',
+              'Configure apifyToken em Configurações para mapear perguntas e intenções de busca.',
+            ],
+          },
+          source: 'auto', dataReliability: 'real', dataSources: [],
+        };
       }
 
       // If competitors provided, include 1 competitor brand name for "X vs Y" comparisons
