@@ -42,9 +42,9 @@ interface AppState {
 
 const DEFAULT_SETTINGS: AppSettings = {
   pageSpeedApiKey: import.meta.env.VITE_PAGESPEED_API_KEY ?? '',
-  emailJSServiceId: '',
-  emailJSTemplateId: '',
-  emailJSPublicKey: '',
+  emailJSServiceId: import.meta.env.VITE_EMAILJS_SERVICE_ID ?? '',
+  emailJSTemplateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? '',
+  emailJSPublicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? '',
   googlePlacesApiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY ?? '',
   metaAccessToken: import.meta.env.VITE_META_ACCESS_TOKEN ?? '',
   openPageRankApiKey: import.meta.env.VITE_OPEN_PAGERANK_API_KEY ?? '',
