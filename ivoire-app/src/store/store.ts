@@ -1,26 +1,25 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Diagnostic, User, DiagnosticInput, SubdimensionScore, CollectionStatus, RegisteredUser, AppSettings } from '../types';
+import type { Diagnostic, User, DiagnosticInput, SubdimensionScore, CollectionStatus, AppSettings } from '../types';
 import { SUBDIMENSIONS } from '../data/scorecard';
 import { finalizeDiagnostic } from '../services/scoring';
-import { hashPassword, verifyPassword } from '../services/emailVerification';
+import { loginFirebase, isFirebaseConfigured, type FirebaseUser } from '../services/authService';
+import { auth } from '../config/firebase';
+import { signOut } from 'firebase/auth';
 
 interface AppState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
-  registeredUsers: RegisteredUser[];
+  firebaseUser: FirebaseUser | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (email: string, name: string, password: string) => Promise<void>;
-  isEmailRegistered: (email: string) => boolean;
-  resetPassword: (email: string, newPassword: string) => Promise<boolean>;
 
   // Settings
   settings: AppSettings;
   updateSettings: (updates: Partial<AppSettings>) => void;
 
-  // Legacy: keep for compatibility
+  // Legacy compat
   pageSpeedApiKey: string;
   setPageSpeedApiKey: (key: string) => void;
 
@@ -31,10 +30,13 @@ interface AppState {
   updateDiagnostic: (id: string, updates: Partial<Diagnostic>) => void;
   updateSubdimensionScore: (diagnosticId: string, score: SubdimensionScore) => void;
   updateCollectionProgress: (diagnosticId: string, subdimId: string, status: CollectionStatus) => void;
-  finalizeDiagnosticById: (id: string) => void;
+  finalizeDiagnosticById: (id: string) => Promise<void>;
   setCurrentDiagnostic: (id: string | null) => void;
   getDiagnostic: (id: string) => Diagnostic | undefined;
   deleteDiagnostic: (id: string) => void;
+
+  // Internal: set user from Firebase onAuthStateChanged
+  _setUserFromFirebase: (fbUser: FirebaseUser | null) => void;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -48,145 +50,84 @@ const DEFAULT_SETTINGS: AppSettings = {
   apifyToken: import.meta.env.VITE_APIFY_TOKEN ?? '',
 };
 
-// Pre-seeded admin user (password: ivoire2024)
-const INITIAL_ADMIN_PASSWORD_HASH = 'da1e0a8f8f09ca50b7c9c6be0ea2dda5c2fae4da6edf8b2e9c3d6a5f1b7e9c3d';
-
-const INITIAL_REGISTERED_USERS: RegisteredUser[] = [
-  {
-    id: '1',
-    name: 'Roberto Barbosa',
-    email: 'roberto@ivoire.ag',
-    role: 'admin',
-    passwordHash: INITIAL_ADMIN_PASSWORD_HASH,
-    emailVerified: true,
-    createdAt: '2024-01-01T00:00:00.000Z',
-  },
-  {
-    id: '2',
-    name: 'Demo Ivoire',
-    email: 'demo@ivoire.ag',
-    role: 'consultor',
-    passwordHash: INITIAL_ADMIN_PASSWORD_HASH, // same hash as demo
-    emailVerified: true,
-    createdAt: '2024-01-01T00:00:00.000Z',
-  },
-];
-
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // Auth
+      // ── Auth ────────────────────────────────────────────────────────────────
       user: null,
       isAuthenticated: false,
-      registeredUsers: INITIAL_REGISTERED_USERS,
+      firebaseUser: null,
 
       login: async (email: string, password: string) => {
-        await new Promise((r) => setTimeout(r, 600));
-
         const emailLower = email.toLowerCase().trim();
-        const registeredUsers = get().registeredUsers;
-        const found = registeredUsers.find((u) => u.email.toLowerCase() === emailLower);
 
-        if (found) {
-          if (!found.emailVerified) {
-            return false; // Email not verified yet
-          }
-          // For the initial admin/demo accounts, accept any password (backward compat)
-          // For newly registered users, verify password hash
-          const isInitialAccount = ['roberto@ivoire.ag', 'demo@ivoire.ag'].includes(emailLower);
-          if (isInitialAccount || found.passwordHash === INITIAL_ADMIN_PASSWORD_HASH) {
-            // Initial accounts — accept any @ivoire.ag email/password combo
-            if (emailLower.endsWith('@ivoire.ag')) {
-              const user: User = {
-                id: found.id,
-                name: found.name,
-                email: found.email,
-                role: found.role,
-                emailVerified: found.emailVerified,
-              };
-              set({ user, isAuthenticated: true });
-              return true;
-            }
-          }
-          const valid = await verifyPassword(password, found.passwordHash);
-          if (valid) {
+        // Primary: Firebase Auth (when configured)
+        if (isFirebaseConfigured) {
+          try {
+            const fbUser = await loginFirebase(emailLower, password);
             const user: User = {
-              id: found.id,
-              name: found.name,
-              email: found.email,
-              role: found.role,
-              emailVerified: found.emailVerified,
+              id: fbUser.uid,
+              name: fbUser.displayName ?? emailLower.split('@')[0].replace(/\./g, ' '),
+              email: fbUser.email ?? emailLower,
+              role: 'consultor',
+              emailVerified: fbUser.emailVerified,
             };
-            set({ user, isAuthenticated: true });
+            set({ user, isAuthenticated: true, firebaseUser: fbUser });
             return true;
+          } catch {
+            return false;
           }
-          return false;
         }
 
-        // Fallback: accept any @ivoire.ag email (for consultants not yet registered)
+        // Fallback: Demo mode — accept any @ivoire.ag email
         if (emailLower.endsWith('@ivoire.ag') && password.length >= 4) {
-          const newUser: User = {
+          const user: User = {
             id: Date.now().toString(),
-            name: emailLower.split('@')[0].replace('.', ' '),
+            name: emailLower.split('@')[0].replace(/\./g, ' '),
             email: emailLower,
             role: 'consultor',
             emailVerified: true,
           };
-          set({ user: newUser, isAuthenticated: true });
+          set({ user, isAuthenticated: true });
           return true;
         }
 
         return false;
       },
 
-      logout: () => set({ user: null, isAuthenticated: false, currentDiagnosticId: null }),
-
-      register: async (email: string, name: string, password: string) => {
-        const hash = await hashPassword(password);
-        const newUser: RegisteredUser = {
-          id: Date.now().toString(),
-          name: name.trim(),
-          email: email.toLowerCase().trim(),
-          role: 'consultor',
-          passwordHash: hash,
-          emailVerified: true, // set true after code verification
-          createdAt: new Date().toISOString(),
-        };
-
-        set((state) => ({
-          registeredUsers: [
-            ...state.registeredUsers.filter((u) => u.email.toLowerCase() !== email.toLowerCase()),
-            newUser,
-          ],
-        }));
+      logout: () => {
+        if (isFirebaseConfigured && auth) {
+          signOut(auth).catch(console.warn); // fire-and-forget
+        }
+        set({ user: null, isAuthenticated: false, firebaseUser: null, currentDiagnosticId: null });
       },
 
-      isEmailRegistered: (email: string) => {
-        const emailLower = email.toLowerCase().trim();
-        return get().registeredUsers.some((u) => u.email.toLowerCase() === emailLower);
+      // Called by onAuthStateChanged in App.tsx
+      _setUserFromFirebase: (fbUser: FirebaseUser | null) => {
+        if (fbUser) {
+          const user: User = {
+            id: fbUser.uid,
+            name: fbUser.displayName ?? fbUser.email?.split('@')[0].replace(/\./g, ' ') ?? 'Usuário',
+            email: fbUser.email ?? '',
+            role: 'consultor',
+            emailVerified: fbUser.emailVerified,
+          };
+          set({ user, isAuthenticated: true, firebaseUser: fbUser });
+        } else {
+          // Firebase says user is logged out
+          const { isAuthenticated } = get();
+          if (isAuthenticated && isFirebaseConfigured) {
+            // Only clear if we were using Firebase (not demo mode)
+            set({ user: null, isAuthenticated: false, firebaseUser: null });
+          }
+        }
       },
 
-      resetPassword: async (email: string, newPassword: string) => {
-        const emailLower = email.toLowerCase().trim();
-        const registeredUsers = get().registeredUsers;
-        const found = registeredUsers.find((u) => u.email.toLowerCase() === emailLower);
-        if (!found) return false;
-
-        const hash = await hashPassword(newPassword);
-        set((state) => ({
-          registeredUsers: state.registeredUsers.map((u) =>
-            u.email.toLowerCase() === emailLower ? { ...u, passwordHash: hash } : u
-          ),
-        }));
-        return true;
-      },
-
-      // Settings
+      // ── Settings ────────────────────────────────────────────────────────────
       settings: DEFAULT_SETTINGS,
       updateSettings: (updates) =>
         set((state) => ({
           settings: { ...state.settings, ...updates },
-          // Keep legacy pageSpeedApiKey in sync
           pageSpeedApiKey: updates.pageSpeedApiKey ?? state.pageSpeedApiKey,
         })),
 
@@ -198,7 +139,7 @@ export const useAppStore = create<AppState>()(
           settings: { ...state.settings, pageSpeedApiKey: key },
         })),
 
-      // Diagnostics
+      // ── Diagnostics ─────────────────────────────────────────────────────────
       diagnostics: [],
       currentDiagnosticId: null,
 
@@ -275,10 +216,11 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
-      finalizeDiagnosticById: (id) => {
+      finalizeDiagnosticById: async (id) => {
         const diag = get().diagnostics.find((d) => d.id === id);
         if (!diag) return;
-        const finalized = finalizeDiagnostic(diag);
+        const claudeApiKey = get().settings.claudeApiKey ?? '';
+        const finalized = await finalizeDiagnostic(diag, claudeApiKey || undefined);
         set((state) => ({
           diagnostics: state.diagnostics.map((d) => (d.id === id ? finalized : d)),
         }));
@@ -300,22 +242,17 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        registeredUsers: state.registeredUsers,
         diagnostics: state.diagnostics,
         pageSpeedApiKey: state.pageSpeedApiKey,
         settings: state.settings,
       }),
-      // Env vars (baked in at build time) always win over empty persisted values.
-      // This ensures that GitHub Secrets injected via VITE_* are always active,
-      // even when the user has an older localStorage state with empty strings.
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<AppState>;
         const mergedSettings = { ...currentState.settings };
         if (persisted.settings) {
           (Object.keys(currentState.settings) as Array<keyof AppSettings>).forEach((k) => {
-            const envVal = currentState.settings[k]; // value from DEFAULT_SETTINGS (env vars)
-            const storedVal = persisted.settings![k]; // value from localStorage
-            // Use env var if set; otherwise fall back to what user manually saved
+            const envVal = currentState.settings[k];
+            const storedVal = persisted.settings![k];
             mergedSettings[k] = envVal || storedVal || '';
           });
         }

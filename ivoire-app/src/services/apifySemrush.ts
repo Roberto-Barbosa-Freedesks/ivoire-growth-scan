@@ -1,11 +1,14 @@
 /**
- * SEMrush domain overview via Apify actor: devnaz/semrush-scraper
- * Returns: authority score, backlinks, referring domains,
- *          organic traffic estimate, organic keywords count
+ * SEMrush domain overview via Apify
  *
- * Cost: ~$0.01 per domain
- * Free tier ($5/mo): ~500 lookups/month
+ * Primary:  radeance/semrush-scraper (higher success rate, better parsed output)
+ *   Input:  { domain }
+ *   Fields: authorityScore, backlinks, referringDomains, organicTraffic, organicKeywords
  *
+ * Fallback: devnaz/semrush-scraper (legacy)
+ *   Input:  { domain }
+ *
+ * Cost: ~$0.01 per domain | Free tier ($5/mo): ~500 lookups/month
  * No SEMrush account required — scrapes the public domain overview page.
  */
 
@@ -78,18 +81,38 @@ export async function fetchSemrush(
 
   if (!apifyToken) return empty;
 
-  const items = await runApifyActor(
-    'devnaz/semrush-scraper',
-    { domain },
-    apifyToken,
-    { timeoutSecs: 90 }
-  );
+  let items: unknown[] = [];
+  let actorUsed = '';
+
+  // Primary: radeance/semrush-scraper
+  try {
+    items = await runApifyActor(
+      'radeance/semrush-scraper',
+      { domain },
+      apifyToken,
+      { timeoutSecs: 90 }
+    );
+    if (items.length) actorUsed = 'radeance/semrush-scraper';
+  } catch { /* fall through */ }
+
+  // Fallback: devnaz/semrush-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'devnaz/semrush-scraper',
+        { domain },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+      if (items.length) actorUsed = 'devnaz/semrush-scraper';
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {
       ...empty,
       findings: [`⚠️ SEMrush não retornou dados para ${domain}`],
-      dataSources: ['SEMrush via Apify (devnaz/semrush-scraper)'],
+      dataSources: ['SEMrush via Apify (sem dados)'],
     };
   }
 
@@ -105,7 +128,7 @@ export async function fetchSemrush(
     paidTraffic: num(d.paidTraffic ?? d.paid_traffic),
     score: 1,
     findings: [],
-    dataSources: ['SEMrush via Apify (devnaz/semrush-scraper)'],
+    dataSources: [`SEMrush via Apify (${actorUsed})`],
   };
 
   if (result.authorityScore !== null)

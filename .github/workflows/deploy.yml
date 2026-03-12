@@ -43,6 +43,13 @@ jobs:
           VITE_PAGESPEED_API_KEY: ${{ secrets.VITE_PAGESPEED_API_KEY }}
           VITE_META_ACCESS_TOKEN: ${{ secrets.VITE_META_ACCESS_TOKEN }}
           VITE_APIFY_TOKEN: ${{ secrets.VITE_APIFY_TOKEN }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_RESEND_API_KEY: ${{ secrets.VITE_RESEND_API_KEY }}
         run: npm run build
 
       - name: Setup Pages

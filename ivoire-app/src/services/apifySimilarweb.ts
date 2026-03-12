@@ -1,13 +1,16 @@
 /**
- * SimilarWeb data via Apify actor: curious_coder/similarweb-scraper
- * Returns: monthly visits, bounce rate, visit duration, traffic source breakdown,
- *          global rank, top countries, top referring sites
+ * SimilarWeb data via Apify
  *
- * Cost: ~$0.02 per domain lookup
- * Free tier ($5/mo): ~250 lookups/month
+ * Primary:  epctex/similarweb-scraper (more stable, richer output)
+ *   Input:  { url: domain }
+ *   Fields: visits, globalRank, bounceRate, avgVisitDuration, pagesPerVisit,
+ *           trafficSources{}, topCountries[]
  *
- * Note: SimilarWeb only has data for sites with >50k monthly visits.
- * Smaller/niche sites return empty — which is itself a useful signal.
+ * Fallback: curious_coder/similarweb-scraper (legacy)
+ *   Input:  { domain }
+ *
+ * Cost: ~$0.02 per domain | Free tier ($5/mo): ~250 lookups/month
+ * Note: SimilarWeb only indexes sites with >50k monthly visits.
  */
 
 import { runApifyActor } from './apifyClient';
@@ -90,12 +93,32 @@ export async function fetchSimilarweb(
 
   if (!apifyToken) return empty;
 
-  const items = await runApifyActor(
-    'curious_coder/similarweb-scraper',
-    { domain },
-    apifyToken,
-    { timeoutSecs: 90 }
-  );
+  let items: unknown[] = [];
+  let actorUsed = '';
+
+  // Primary: epctex/similarweb-scraper
+  try {
+    items = await runApifyActor(
+      'epctex/similarweb-scraper',
+      { url: domain, startUrls: [{ url: `https://www.similarweb.com/website/${domain}/` }] },
+      apifyToken,
+      { timeoutSecs: 90 }
+    );
+    if (items.length) actorUsed = 'epctex/similarweb-scraper';
+  } catch { /* fall through */ }
+
+  // Fallback: curious_coder/similarweb-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'curious_coder/similarweb-scraper',
+        { domain },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+      if (items.length) actorUsed = 'curious_coder/similarweb-scraper';
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {
@@ -139,7 +162,7 @@ export async function fetchSimilarweb(
 
   const result: SimilarwebResult = {
     found: true, monthlyVisits, globalRank, bounceRate, avgVisitDuration, pagesPerVisit,
-    trafficSources, topCountries, score: 1, findings: [], dataSources: ['SimilarWeb via Apify (curious_coder/similarweb-scraper)'],
+    trafficSources, topCountries, score: 1, findings: [], dataSources: [`SimilarWeb via Apify (${actorUsed})`],
   };
 
   // Build findings

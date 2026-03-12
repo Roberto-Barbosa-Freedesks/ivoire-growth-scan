@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { SUBDIMENSIONS, SCORE_THRESHOLDS } from '../data/scorecard';
 import { RECOMMENDATIONS_LIBRARY } from '../data/recommendations';
+import { applyAllSkills } from '../skills/skillsEngine';
 
 export function scoreToLevel(score: number): MaturityLevel {
   if (score <= SCORE_THRESHOLDS.Intuitivo.max) return 'Intuitivo';
@@ -204,7 +205,10 @@ export function generateExecutiveNarrative(
   return narrative;
 }
 
-export function finalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
+export async function finalizeDiagnostic(
+  diagnostic: Diagnostic,
+  claudeApiKey?: string
+): Promise<Diagnostic> {
   const dimensionScores = calculateDimensionScores(
     diagnostic.subdimensionScores,
     diagnostic.input.isEcommerce
@@ -220,9 +224,38 @@ export function finalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
     dimensionScores
   );
 
+  // Skills Engine — LLM enrichment per subdimension (optional, requires claudeApiKey)
+  let enrichedSubdimensionScores = diagnostic.subdimensionScores;
+  if (claudeApiKey) {
+    const skillInputs = diagnostic.subdimensionScores
+      .filter((s) => s.source !== 'skipped' && s.source !== 'insufficient')
+      .map((s) => ({
+        subdimensionId: s.subdimensionId,
+        rawData: s.rawData,
+        score: s.score,
+      }));
+
+    const skillResults = await applyAllSkills(skillInputs, diagnostic.input, claudeApiKey);
+
+    if (skillResults.size > 0) {
+      enrichedSubdimensionScores = diagnostic.subdimensionScores.map((s) => {
+        const skillResult = skillResults.get(s.subdimensionId);
+        if (!skillResult) return s;
+        return {
+          ...s,
+          rawData: {
+            ...s.rawData,
+            skillAnalysis: skillResult,
+          },
+        };
+      });
+    }
+  }
+
   return {
     ...diagnostic,
     status: 'completed',
+    subdimensionScores: enrichedSubdimensionScores,
     dimensionScores,
     overallScore,
     overallLevel,

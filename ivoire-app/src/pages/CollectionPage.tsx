@@ -266,7 +266,7 @@ export default function CollectionPage() {
         }
       }
 
-      finalizeDiagnosticById(diagnosticId!);
+      await finalizeDiagnosticById(diagnosticId!);
       setIsFinalized(true);
     }
 

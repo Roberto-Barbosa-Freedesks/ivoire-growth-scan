@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useAppStore } from './store/store';
+import { auth, isFirebaseConfigured } from './config/firebase';
 import AppLayout from './components/layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -15,6 +18,16 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const _setUserFromFirebase = useAppStore((s) => s._setUserFromFirebase);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !auth) return;
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      _setUserFromFirebase(fbUser);
+    });
+    return unsubscribe;
+  }, [_setUserFromFirebase]);
+
   return (
     <BrowserRouter basename="/ivoire-growth-scan">
       <Routes>

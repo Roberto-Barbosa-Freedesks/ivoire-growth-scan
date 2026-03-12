@@ -1,11 +1,15 @@
 /**
- * Google Maps / Places enrichment via Apify: compass/crawler-google-places
- * Returns: full business data + up to 50 reviews with text, rating, date, owner reply
+ * Google Maps / Places enrichment via Apify
  *
- * Cost: ~$0.002 per place + ~$0.0003/review (50 reviews ≈ $0.017 total)
- * Free tier ($5/mo): ~290 full lookups with 50 reviews each
+ * Primary:  compass/Google-Maps-Reviews-Scraper (dedicated reviews scraper — faster, lighter)
+ *   Input:  { searchQuery: string, maxReviews: number }
+ *   Output: business data + up to maxReviews reviews with text, rating, date, ownerReply
  *
- * Surpasses Google Places API (which returns max 5 reviews).
+ * Fallback: compass/crawler-google-places (full crawler — slower but broader coverage)
+ *   Input:  { searchStringsArray, language, maxReviews, reviewsSort, maxCrawledPlacesPerSearch }
+ *
+ * Cost: ~$0.002 per place + ~$0.0003/review | ~290 full lookups/month on $5 free tier
+ * Surpasses Google Places API (max 5 reviews vs up to 50 here).
  */
 
 import { runApifyActor } from './apifyClient';
@@ -85,32 +89,55 @@ export async function fetchGoogleMapsEnriched(
   searchVariants.push(`${companyName} brasil`);
 
   let items: unknown[] = [];
+  let actorUsed = '';
+
+  // Primary: compass/Google-Maps-Reviews-Scraper (faster, dedicated reviews scraper)
   for (const query of searchVariants) {
+    if (items.length > 0) break;
     try {
       items = await runApifyActor(
-        'compass/crawler-google-places',
+        'compass/Google-Maps-Reviews-Scraper',
         {
-          searchStringsArray: [query],
-          language: 'pt',
+          searchQuery: query,
           maxReviews,
           reviewsSort: 'newest',
-          includeWebResults: false,
-          maxCrawledPlacesPerSearch: 5,
+          language: 'pt',
         },
         apifyToken,
         { timeoutSecs: 90 }
       );
-    } catch {
-      // try next variant
+      if (items.length) actorUsed = 'compass/Google-Maps-Reviews-Scraper';
+    } catch { /* try next variant */ }
+  }
+
+  // Fallback: compass/crawler-google-places (broader crawler)
+  if (!items.length) {
+    for (const query of searchVariants) {
+      if (items.length > 0) break;
+      try {
+        items = await runApifyActor(
+          'compass/crawler-google-places',
+          {
+            searchStringsArray: [query],
+            language: 'pt',
+            maxReviews,
+            reviewsSort: 'newest',
+            includeWebResults: false,
+            maxCrawledPlacesPerSearch: 5,
+          },
+          apifyToken,
+          { timeoutSecs: 90 }
+        );
+        if (items.length) actorUsed = 'compass/crawler-google-places';
+      } catch { /* try next variant */ }
     }
-    if (items.length > 0) break;
   }
 
   if (!items.length) {
     return {
       ...empty,
       findings: [`⚠️ "${companyName}" não encontrado no Google Maps via Apify`],
-      dataSources: ['Google Maps via Apify (compass/crawler-google-places)'],
+      dataSources: ['Google Maps via Apify (sem dados)'],
     };
   }
 
@@ -162,7 +189,7 @@ export async function fetchGoogleMapsEnriched(
     categories,
     score: 1,
     findings: [],
-    dataSources: ['Google Maps via Apify (compass/crawler-google-places — até 50 avaliações reais)'],
+    dataSources: [`Google Maps via Apify (${actorUsed} — até ${maxReviews} avaliações reais)`],
   };
 
   if (result.rating !== null)
