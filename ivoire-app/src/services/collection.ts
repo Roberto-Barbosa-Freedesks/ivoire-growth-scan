@@ -37,6 +37,11 @@ import { analyzeCheckoutWithClaude } from './checkoutAnalysis';
 import { fetchBuiltWith } from './apifyBuiltWith';
 import { fetchGptSearch } from './apifyGptSearch';
 import { fetchGoogleTrends } from './apifyGoogleTrends';
+import { fetchUbersuggest } from './apifyUbersuggest';
+import { fetchSeRanking } from './apifySeRanking';
+import { fetchAmazon } from './apifyAmazon';
+import { fetchGoogleShopping } from './apifyGoogleShopping';
+import { runApifyActor } from './apifyClient';
 export { fetchContacts } from './apifyContactExtractor';
 export type { GoogleSearchResult } from './apifyGoogleSearch'; // re-export for future use
 
@@ -684,35 +689,126 @@ export async function collectSubdimension(
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // PRESENÇA EM MARKETPLACES — real via Mercado Livre public API
+    // PRESENÇA EM MARKETPLACES — Mercado Livre (free API) + Amazon + Google Shopping via Apify
+    //                            + Karamelo ML scraper (enhanced ML data when Apify available)
     // ────────────────────────────────────────────────────────────────────
     case 'presenca_marketplaces': {
       if (!input.isEcommerce) {
         return {
           score: 1,
           data: { skipped: true, reason: 'Não aplicável — empresa não é e-commerce' },
-          source: 'auto',
-          dataReliability: 'real',
-          dataSources: [],
+          source: 'auto', dataReliability: 'real', dataSources: [],
         };
       }
-      const result = await searchMercadoLivre(companyName, siteUrl);
+
+      const apifyTokenMkt = settings.apifyToken ?? '';
+      const allMktFindings: string[] = [];
+      const allMktSources: string[] = [];
+
+      // ── 1. Mercado Livre — free public API (always runs) ──────────────
+      const mlResult = await searchMercadoLivre(companyName, siteUrl);
+      let mlScore = mlResult.score;
+      allMktFindings.push(...mlResult.findings);
+      allMktSources.push('Mercado Livre API (pública, gratuita)');
+
+      // ── 1b. Karamelo ML Scraper — enhanced data (when Apify available) ──
+      let karameloData: Record<string, unknown> = {};
+      if (apifyTokenMkt && !mlResult.found) {
+        // Use Karamelo scraper as alternative when free API finds nothing
+        try {
+          const karItems = await runApifyActor(
+            'karamelo/mercadolivre-scraper-brasil-portugues',
+            { keyword: companyName, pages: 2 },
+            apifyTokenMkt,
+            { timeoutSecs: 90 }
+          );
+          if (karItems.length > 0) {
+            mlScore = Math.max(mlScore, 2);
+            karameloData = {
+              karameloFound: true,
+              karameloListings: karItems.length,
+              karameloSample: (karItems as Array<Record<string, unknown>>).slice(0, 3).map((p) => ({
+                title: String(p.titulo ?? p.title ?? p.name ?? ''),
+                price: p.preco ?? p.price ?? null,
+                seller: p.vendedor ?? p.seller ?? null,
+              })),
+            };
+            allMktFindings.push(`✓ Mercado Livre (scraper): ${karItems.length} listagens encontradas para "${companyName}"`);
+            allMktSources.push('Mercado Livre via Apify (karamelo/mercadolivre-scraper-brasil-portugues)');
+          }
+        } catch { /* skip */ }
+      }
+
+      // ── 2. Amazon Brazil — junglee/amazon-crawler ────────────────────
+      let amazonData: Record<string, unknown> = {};
+      let amazonScore = 1;
+      if (apifyTokenMkt) {
+        const amz = await fetchAmazon(companyName, apifyTokenMkt);
+        amazonScore = amz.score;
+        if (amz.found) {
+          amazonData = {
+            amazonFound: true,
+            amazonTotalProducts: amz.totalProducts,
+            amazonTopSeller: amz.topSeller,
+            amazonAvgRating: amz.avgRating,
+            amazonAvgPrice: amz.avgPrice,
+            amazonProducts: amz.products.slice(0, 5),
+          };
+          allMktFindings.push(...amz.findings);
+          if (amz.dataSources.length) allMktSources.push(...amz.dataSources);
+        } else {
+          allMktFindings.push(...amz.findings);
+        }
+      }
+
+      // ── 3. Google Shopping — epctex/google-shopping-scraper ──────────
+      let googleShoppingData: Record<string, unknown> = {};
+      let googleShoppingScore = 1;
+      if (apifyTokenMkt) {
+        const gss = await fetchGoogleShopping(companyName, apifyTokenMkt);
+        googleShoppingScore = gss.score;
+        if (gss.found) {
+          googleShoppingData = {
+            googleShoppingFound: true,
+            googleShoppingTotalProducts: gss.totalProducts,
+            googleShoppingTopMerchant: gss.topMerchant,
+            googleShoppingAvgPrice: gss.avgPrice,
+            googleShoppingPriceRange: gss.priceRange,
+            googleShoppingAvgRating: gss.avgRating,
+            googleShoppingProducts: gss.products.slice(0, 5),
+          };
+          allMktFindings.push(...gss.findings);
+          if (gss.dataSources.length) allMktSources.push(...gss.dataSources);
+        } else {
+          allMktFindings.push(...gss.findings);
+        }
+      }
+
+      const finalMktScore = Math.max(mlScore, amazonScore, googleShoppingScore);
+
       return {
-        score: result.score,
+        score: finalMktScore,
         data: {
-          mercadoLivreFound: result.found,
-          totalListings: result.totalListings,
-          sellers: result.sellers,
-          topSellerNickname: result.topSeller?.nickname ?? null,
-          powerSellerStatus: result.topSeller?.powerSellerStatus ?? null,
-          positiveRatingPct: result.topSeller?.positiveRatingPct ?? null,
-          completedTransactions: result.topSeller?.completedTransactions ?? null,
-          findings: result.findings,
-          note: 'Shopee e Amazon requerem integração adicional (APIs específicas).',
+          mercadoLivreFound: mlResult.found,
+          totalListings: mlResult.totalListings,
+          sellers: mlResult.sellers,
+          topSellerNickname: mlResult.topSeller?.nickname ?? null,
+          powerSellerStatus: mlResult.topSeller?.powerSellerStatus ?? null,
+          positiveRatingPct: mlResult.topSeller?.positiveRatingPct ?? null,
+          completedTransactions: mlResult.topSeller?.completedTransactions ?? null,
+          ...karameloData,
+          ...amazonData,
+          ...googleShoppingData,
+          findings: allMktFindings,
+          marketplacesCovered: [
+            'Mercado Livre',
+            ...(amazonData.amazonFound ? ['Amazon.com.br'] : []),
+            ...(googleShoppingData.googleShoppingFound ? ['Google Shopping'] : []),
+          ],
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: ['Mercado Livre API (pública, gratuita)'],
+        dataSources: allMktSources,
       };
     }
 
@@ -760,6 +856,44 @@ export async function collectSubdimension(
         if (ahr.dataSources.length) allSources.push(...ahr.dataSources);
       }
 
+      // Tertiary: Ubersuggest via Apify (MOZ Domain Authority — fallback when SEMrush/Ahrefs miss)
+      let ubersuggestData: Record<string, unknown> = {};
+      let ubersuggestScore = 1;
+      if (apifyToken) {
+        const ubs = await fetchUbersuggest(siteUrl, apifyToken);
+        ubersuggestScore = ubs.score;
+        if (ubs.found) {
+          ubersuggestData = {
+            ubersuggestMozDA: ubs.domainAuthority,
+            ubersuggestBacklinks: ubs.backlinks,
+            ubersuggestReferringDomains: ubs.referringDomains,
+            ubersuggestOrganicTraffic: ubs.organicTraffic,
+            ubersuggestSpamScore: ubs.spamScore,
+          };
+          allFindings.push(...ubs.findings);
+          if (ubs.dataSources.length) allSources.push(...ubs.dataSources);
+        }
+      }
+
+      // Quaternary: SE Ranking via Apify (Domain Trust + AI Citations signal)
+      let seRankingData: Record<string, unknown> = {};
+      let seRankingScore = 1;
+      if (apifyToken) {
+        const ser = await fetchSeRanking(siteUrl, apifyToken);
+        seRankingScore = ser.score;
+        if (ser.found) {
+          seRankingData = {
+            seRankingDomainTrust: ser.domainTrust,
+            seRankingBacklinks: ser.backlinks,
+            seRankingReferringDomains: ser.referringDomains,
+            seRankingAiVisibility: ser.aiVisibility,
+            seRankingAiCitations: ser.aiCitations,
+          };
+          allFindings.push(...ser.findings);
+          if (ser.dataSources.length) allSources.push(...ser.dataSources);
+        }
+      }
+
       // Competitor benchmarking — Ahrefs DR for each competitor URL (up to 2)
       const competitorBenchmark: Array<{
         url: string;
@@ -802,26 +936,35 @@ export async function collectSubdimension(
       allSources.push(...base.dataSources);
 
       const finalScore = apifyToken
-        ? Math.max(semrushScore, ahrefsScore, base.score)
+        ? Math.max(semrushScore, ahrefsScore, ubersuggestScore, seRankingScore, base.score)
         : base.score;
 
       // Flat aliases — DimensionPage SubdimVisuals reads these names
+      // Priority: SEMrush → Ahrefs → Ubersuggest → SE Ranking → OPR
       const authorityScore =
         (semrushData.semrushAuthorityScore as number | null) ??
         (ahrefsData.ahrefsDomainRating as number | null) ??
+        (ubersuggestData.ubersuggestMozDA as number | null) ??
+        (seRankingData.seRankingDomainTrust as number | null) ??
         base.openPageRank ?? 0;
       const totalBacklinks =
         (semrushData.semrushBacklinks as number | null) ??
-        (ahrefsData.ahrefsBacklinks as number | null) ?? 0;
+        (ahrefsData.ahrefsBacklinks as number | null) ??
+        (ubersuggestData.ubersuggestBacklinks as number | null) ??
+        (seRankingData.seRankingBacklinks as number | null) ?? 0;
       const referringDomains =
         (semrushData.semrushReferringDomains as number | null) ??
-        (ahrefsData.ahrefsReferringDomains as number | null) ?? 0;
+        (ahrefsData.ahrefsReferringDomains as number | null) ??
+        (ubersuggestData.ubersuggestReferringDomains as number | null) ??
+        (seRankingData.seRankingReferringDomains as number | null) ?? 0;
 
       return {
         score: finalScore,
         data: {
           ...semrushData,
           ...ahrefsData,
+          ...ubersuggestData,
+          ...seRankingData,
           authorityScore,
           totalBacklinks,
           referringDomains,
