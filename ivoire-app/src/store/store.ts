@@ -261,7 +261,7 @@ export const useAppStore = create<AppState>()(
           (Object.keys(currentState.settings) as Array<keyof AppSettings>).forEach((k) => {
             const envVal = currentState.settings[k];
             const storedVal = persisted.settings![k];
-            mergedSettings[k] = envVal || storedVal || '';
+            (mergedSettings as Record<string, unknown>)[k] = storedVal || envVal || '';
           });
         }
         // Sync EmailJS on hydration

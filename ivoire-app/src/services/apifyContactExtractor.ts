@@ -219,6 +219,7 @@ export async function fetchContacts(
     const profiles: ContactInfo['linkedinProfiles'] = [];
 
     for (const row of linkedinResult.value) {
+      if (typeof row !== 'object' || row === null) continue;
       const name = String(row.name ?? row.fullName ?? row.full_name ?? '').trim();
       const title = String(row.title ?? row.headline ?? row.position ?? row.jobTitle ?? '').trim();
       const linkedinUrl =

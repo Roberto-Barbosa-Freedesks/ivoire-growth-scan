@@ -1,3 +1,6 @@
+import type { ContactInfo } from '../services/apifyContactExtractor';
+export type { ContactInfo };
+
 export type MaturityLevel = 'Intuitivo' | 'Reativo' | 'Ativo' | 'Exponencial';
 
 export type DimensionKey = 'CONTEUDO' | 'CANAIS' | 'CONVERSAO' | 'CONTROLE';
@@ -101,7 +104,7 @@ export interface Diagnostic {
   insights?: Insight[];
   recommendations?: Recommendation[];
   /** Commercial contacts extracted from the company website + LinkedIn (optional, collected during finalization) */
-  contacts?: import('../services/apifyContactExtractor').ContactInfo;
+  contacts?: ContactInfo;
 }
 
 export interface User {

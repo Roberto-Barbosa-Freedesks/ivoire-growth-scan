@@ -60,7 +60,7 @@ export function analyzeUxCro(
 
   // ── Chatbot / Live Chat ─────────────────────────────────────────────────
   // From PageSpeed tech detection
-  let chatbotPlatforms: string[] = [];
+  const chatbotPlatforms: string[] = [];
   if (tech?.intercomInstalled) chatbotPlatforms.push('Intercom');
   if (tech?.hubspotInstalled) chatbotPlatforms.push('HubSpot Chat');
 

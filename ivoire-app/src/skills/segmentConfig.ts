@@ -68,7 +68,7 @@ export const DOMINANT_CHANNEL: Record<SegmentKey, string> = {
 };
 
 export function getSegmentKey(segment: string): SegmentKey {
-  const normalized = segment.toLowerCase().replace(/[\s/&()\-]/g, '_');
+  const normalized = segment.toLowerCase().replace(/[\s/&()-]/g, '_');
   const knownKeys = Object.keys(SEGMENT_LABELS) as SegmentKey[];
   return (
     knownKeys.find(

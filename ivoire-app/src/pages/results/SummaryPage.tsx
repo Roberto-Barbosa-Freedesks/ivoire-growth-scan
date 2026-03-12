@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { generateDemoContacts } from '../../services/apollo';
 import { DIMENSION_CONFIG, LEVEL_CONFIG } from '../../data/scorecard';
 import { scoreToLevel } from '../../services/scoring';
@@ -131,20 +131,17 @@ function ContactCard({ contact, index }: { contact: ApolloContact; index: number
 }
 
 export default function SummaryPage({ diagnostic }: Props) {
-  const [contacts, setContacts] = useState<ApolloContact[]>([]);
-  const [apolloLoading] = useState(false);
-  const [isDemo, setIsDemo] = useState(false);
+  const contacts = useMemo(
+    () => generateDemoContacts(diagnostic.input.companyName),
+    [diagnostic.input.companyName]
+  );
+  const apolloLoading = false;
+  const isDemo = true;
 
   const overallScore = diagnostic.overallScore ?? 0;
   const overallLevel = diagnostic.overallLevel ?? 'Intuitivo';
   const levelCfg = LEVEL_CONFIG[overallLevel];
   const dimensionScores = diagnostic.dimensionScores ?? [];
-
-  // Load demo contacts (Apollo.io removed — use LinkedIn via Apify for real intelligence)
-  useEffect(() => {
-    setContacts(generateDemoContacts(diagnostic.input.companyName));
-    setIsDemo(true);
-  }, [diagnostic.input.companyName]);
 
   // Gaps and strengths
   const subdims = diagnostic.subdimensionScores.filter((s) => s.source !== 'skipped');
