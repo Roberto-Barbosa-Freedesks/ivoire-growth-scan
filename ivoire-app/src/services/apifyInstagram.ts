@@ -1,5 +1,7 @@
 /**
- * Instagram profile data via Apify: apify/instagram-profile-scraper
+ * Instagram profile data via Apify
+ * Primary:  apify/instagram-scraper
+ * Fallback: apify/instagram-profile-scraper
  * Returns: followers, posts, bio, website link, verification, business category
  *
  * Cost: ~$0.003 per profile
@@ -53,6 +55,14 @@ function calcScore(r: InstagramResult): number {
   return 1;
 }
 
+function normalizeFollowers(d: Record<string, unknown>): number | null {
+  // Normalize across actor field name variants
+  const raw = d.followersCount ?? d.followers ?? d.followedBy ?? null;
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return isNaN(n) ? null : n;
+}
+
 export async function fetchInstagramProfile(
   instagramUrl: string | undefined,
   apifyToken: string
@@ -69,28 +79,48 @@ export async function fetchInstagramProfile(
   const username = extractInstagramUsername(instagramUrl);
   const profileUrl = `https://www.instagram.com/${username}/`;
 
-  const items = await runApifyActor(
-    'apify/instagram-profile-scraper',
-    { usernames: [username], resultsLimit: 1 },
-    apifyToken,
-    { timeoutSecs: 60 }
-  );
+  let items: Record<string, unknown>[] = [];
+  let actorUsed = '';
+
+  // Primary: apify/instagram-scraper
+  try {
+    items = await runApifyActor(
+      'apify/instagram-scraper',
+      { usernames: [username] },
+      apifyToken,
+      { timeoutSecs: 60 }
+    ) as Record<string, unknown>[];
+    if (items.length) actorUsed = 'apify/instagram-scraper';
+  } catch { /* fall through */ }
+
+  // Fallback: apify/instagram-profile-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'apify/instagram-profile-scraper',
+        { usernames: [username], resultsLimit: 1 },
+        apifyToken,
+        { timeoutSecs: 60 }
+      ) as Record<string, unknown>[];
+      if (items.length) actorUsed = 'apify/instagram-profile-scraper';
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {
       ...empty,
       findings: [`⚠️ Perfil Instagram @${username} não encontrado`],
-      dataSources: ['Instagram via Apify (apify/instagram-profile-scraper)'],
+      dataSources: [`Instagram via Apify (${actorUsed || 'apify/instagram-scraper'})`],
     };
   }
 
-  const d = items[0] as Record<string, unknown>;
+  const d = items[0];
 
   const result: InstagramResult = {
     found: true,
     username: String(d.username ?? username),
     fullName: d.fullName ? String(d.fullName) : d.name ? String(d.name) : null,
-    followers: d.followersCount ? Number(d.followersCount) : d.followers ? Number(d.followers) : null,
+    followers: normalizeFollowers(d),
     following: d.followsCount ? Number(d.followsCount) : d.following ? Number(d.following) : null,
     posts: d.postsCount ? Number(d.postsCount) : d.mediaCount ? Number(d.mediaCount) : null,
     bio: d.biography ? String(d.biography) : null,
@@ -101,7 +131,7 @@ export async function fetchInstagramProfile(
     profileUrl,
     score: 1,
     findings: [],
-    dataSources: ['Instagram via Apify (apify/instagram-profile-scraper)'],
+    dataSources: [`Instagram via Apify (${actorUsed})`],
   };
 
   if (result.followers !== null)

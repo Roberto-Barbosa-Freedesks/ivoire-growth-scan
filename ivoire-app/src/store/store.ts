@@ -6,6 +6,7 @@ import { finalizeDiagnostic } from '../services/scoring';
 import { loginFirebase, isFirebaseConfigured, type FirebaseUser } from '../services/authService';
 import { auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
+import { configureEmailJS } from '../services/resendEmailService';
 
 interface AppState {
   // Auth
@@ -125,11 +126,17 @@ export const useAppStore = create<AppState>()(
 
       // ── Settings ────────────────────────────────────────────────────────────
       settings: DEFAULT_SETTINGS,
-      updateSettings: (updates) =>
+      updateSettings: (updates) => {
         set((state) => ({
           settings: { ...state.settings, ...updates },
           pageSpeedApiKey: updates.pageSpeedApiKey ?? state.pageSpeedApiKey,
-        })),
+        }));
+        // Sync EmailJS config whenever settings change
+        const merged = { ...get().settings, ...updates };
+        if (merged.emailJSServiceId && merged.emailJSTemplateId && merged.emailJSPublicKey) {
+          configureEmailJS(merged.emailJSServiceId, merged.emailJSTemplateId, merged.emailJSPublicKey);
+        }
+      },
 
       // Legacy
       pageSpeedApiKey: '',
@@ -220,7 +227,8 @@ export const useAppStore = create<AppState>()(
         const diag = get().diagnostics.find((d) => d.id === id);
         if (!diag) return;
         const claudeApiKey = get().settings.claudeApiKey ?? '';
-        const finalized = await finalizeDiagnostic(diag, claudeApiKey || undefined);
+        const apifyToken = get().settings.apifyToken ?? '';
+        const finalized = await finalizeDiagnostic(diag, claudeApiKey || undefined, apifyToken || undefined);
         set((state) => ({
           diagnostics: state.diagnostics.map((d) => (d.id === id ? finalized : d)),
         }));
@@ -255,6 +263,10 @@ export const useAppStore = create<AppState>()(
             const storedVal = persisted.settings![k];
             mergedSettings[k] = envVal || storedVal || '';
           });
+        }
+        // Sync EmailJS on hydration
+        if (mergedSettings.emailJSServiceId && mergedSettings.emailJSTemplateId && mergedSettings.emailJSPublicKey) {
+          configureEmailJS(mergedSettings.emailJSServiceId, mergedSettings.emailJSTemplateId, mergedSettings.emailJSPublicKey);
         }
         return { ...currentState, ...persisted, settings: mergedSettings };
       },

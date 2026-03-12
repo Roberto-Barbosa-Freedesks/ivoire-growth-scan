@@ -100,6 +100,8 @@ export interface Diagnostic {
   executiveNarrative?: string;
   insights?: Insight[];
   recommendations?: Recommendation[];
+  /** Commercial contacts extracted from the company website + LinkedIn (optional, collected during finalization) */
+  contacts?: import('../services/apifyContactExtractor').ContactInfo;
 }
 
 export interface User {

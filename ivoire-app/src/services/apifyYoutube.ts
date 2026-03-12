@@ -1,5 +1,7 @@
 /**
- * YouTube channel data via Apify: streamers/youtube-channel-scraper
+ * YouTube channel data via Apify
+ * Primary:  streamers/youtube-scraper
+ * Fallback: streamers/youtube-channel-scraper
  * Scrapes a YouTube channel URL — no API key required.
  *
  * Cost: ~$0.005 per channel
@@ -41,6 +43,30 @@ function calcScore(r: YoutubeScraperResult): number {
   return 1;
 }
 
+function parseResult(d: Record<string, unknown>, channelUrl: string, actorUsed: string): YoutubeScraperResult {
+  // Normalize subscriberCount from either actor's field names
+  const rawSubs =
+    d.numberOfSubscribers ?? d.subscriberCount ?? d.subscribers ?? null;
+  const subscribers = rawSubs != null && rawSubs !== '' ? Number(rawSubs) : null;
+
+  const result: YoutubeScraperResult = {
+    found: true,
+    channelTitle: d.channelName ? String(d.channelName) : d.title ? String(d.title) : null,
+    channelUrl: d.channelUrl ? String(d.channelUrl) : channelUrl,
+    subscribers: !isNaN(subscribers as number) && subscribers != null ? subscribers : null,
+    videoCount: d.channelTotalVideos ? Number(d.channelTotalVideos)
+      : d.videoCount ? Number(d.videoCount) : null,
+    viewCount: d.channelTotalViews ? Number(d.channelTotalViews)
+      : d.viewCount ? Number(d.viewCount) : null,
+    description: d.channelDescription ? String(d.channelDescription) : null,
+    isVerified: !!(d.isVerified ?? d.verified),
+    score: 1,
+    findings: [],
+    dataSources: [`YouTube via Apify (${actorUsed})`],
+  };
+  return result;
+}
+
 export async function fetchYoutubeChannel(
   youtubeUrl: string | undefined,
   apifyToken: string
@@ -56,40 +82,44 @@ export async function fetchYoutubeChannel(
   // Normalize URL
   const channelUrl = youtubeUrl.startsWith('http') ? youtubeUrl : `https://www.youtube.com/${youtubeUrl.replace(/^@/, '@')}`;
 
+  let items: Record<string, unknown>[] = [];
+  let actorUsed = '';
+
+  // Primary: streamers/youtube-scraper
   try {
-    const items = await runApifyActor(
-      'streamers/youtube-channel-scraper',
-      { startUrls: [{ url: channelUrl }], maxResultsShorts: 0, maxResultsStreams: 0, maxResults: 0 },
+    items = await runApifyActor(
+      'streamers/youtube-scraper',
+      { startUrls: [{ url: channelUrl }], maxResults: 0 },
       apifyToken,
-      { timeoutSecs: 90 }
-    );
+      { timeoutSecs: 60 }
+    ) as Record<string, unknown>[];
+    if (items.length) actorUsed = 'streamers/youtube-scraper';
+  } catch { /* fall through */ }
 
-    if (!items.length) {
-      return {
-        ...empty,
-        findings: [`⚠️ Canal YouTube não encontrado: ${channelUrl}`],
-        dataSources: ['YouTube via Apify (streamers/youtube-channel-scraper)'],
-      };
-    }
+  // Fallback: streamers/youtube-channel-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'streamers/youtube-channel-scraper',
+        { startUrls: [{ url: channelUrl }], maxResultsShorts: 0, maxResultsStreams: 0, maxResults: 0 },
+        apifyToken,
+        { timeoutSecs: 90 }
+      ) as Record<string, unknown>[];
+      if (items.length) actorUsed = 'streamers/youtube-channel-scraper';
+    } catch { /* give up */ }
+  }
 
-    const d = items[0] as Record<string, unknown>;
-
-    const result: YoutubeScraperResult = {
-      found: true,
-      channelTitle: d.channelName ? String(d.channelName) : d.title ? String(d.title) : null,
-      channelUrl: d.channelUrl ? String(d.channelUrl) : channelUrl,
-      subscribers: d.numberOfSubscribers ? Number(d.numberOfSubscribers)
-        : d.subscriberCount ? Number(d.subscriberCount) : null,
-      videoCount: d.channelTotalVideos ? Number(d.channelTotalVideos)
-        : d.videoCount ? Number(d.videoCount) : null,
-      viewCount: d.channelTotalViews ? Number(d.channelTotalViews)
-        : d.viewCount ? Number(d.viewCount) : null,
-      description: d.channelDescription ? String(d.channelDescription) : null,
-      isVerified: !!(d.isVerified ?? d.verified),
-      score: 1,
-      findings: [],
-      dataSources: ['YouTube via Apify (streamers/youtube-channel-scraper)'],
+  if (!items.length) {
+    return {
+      ...empty,
+      findings: [`⚠️ Canal YouTube não encontrado: ${channelUrl}`],
+      dataSources: [`YouTube via Apify (${actorUsed || 'streamers/youtube-scraper'})`],
     };
+  }
+
+  try {
+    const d = items[0];
+    const result = parseResult(d, channelUrl, actorUsed);
 
     if (result.channelTitle)
       result.findings.push(`✓ Canal YouTube: ${result.channelTitle}`);
@@ -108,7 +138,7 @@ export async function fetchYoutubeChannel(
     return {
       ...empty,
       findings: [`⚠️ Erro ao coletar dados do YouTube: ${channelUrl}`],
-      dataSources: ['YouTube via Apify (streamers/youtube-channel-scraper)'],
+      dataSources: [`YouTube via Apify (${actorUsed})`],
     };
   }
 }

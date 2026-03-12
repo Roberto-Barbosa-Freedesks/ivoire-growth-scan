@@ -14,6 +14,7 @@ import {
 import { DIMENSION_CONFIG, LEVEL_CONFIG } from '../../data/scorecard';
 import { scoreToLevel } from '../../services/scoring';
 import type { Diagnostic, DimensionKey, MaturityLevel } from '../../types';
+import ContactsSection from './ContactsSection';
 
 interface Props {
   diagnostic: Diagnostic;
@@ -517,6 +518,14 @@ export default function OverviewPage({ diagnostic }: Props) {
             );
           })}
         </div>
+      </div>
+
+      {/* Contacts Section — commercial contacts extracted from site + LinkedIn */}
+      <div style={{ marginTop: 32 }}>
+        <ContactsSection
+          contacts={diagnostic.contacts ?? null}
+          companyName={diagnostic.input.companyName}
+        />
       </div>
     </div>
   );

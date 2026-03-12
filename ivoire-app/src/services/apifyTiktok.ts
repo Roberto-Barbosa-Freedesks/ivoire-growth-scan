@@ -1,5 +1,7 @@
 /**
- * TikTok profile data via Apify: clockworks/tiktok-profile-scraper
+ * TikTok profile data via Apify
+ * Primary:  clockworks/tiktok-scraper
+ * Fallback: clockworks/tiktok-profile-scraper
  * Returns: followers, following, likes, videos, bio, verified status
  *
  * Cost: ~$0.002 per profile
@@ -64,22 +66,42 @@ export async function fetchTiktokProfile(
   const username = extractTiktokUsername(tiktokUrl);
   const profileUrl = `https://www.tiktok.com/@${username}`;
 
-  const items = await runApifyActor(
-    'clockworks/tiktok-profile-scraper',
-    { profiles: [profileUrl], resultsPerPage: 1 },
-    apifyToken,
-    { timeoutSecs: 60 }
-  );
+  let items: Record<string, unknown>[] = [];
+  let actorUsed = '';
+
+  // Primary: clockworks/tiktok-scraper
+  try {
+    items = await runApifyActor(
+      'clockworks/tiktok-scraper',
+      { profiles: [profileUrl], resultsPerPage: 1 },
+      apifyToken,
+      { timeoutSecs: 60 }
+    ) as Record<string, unknown>[];
+    if (items.length) actorUsed = 'clockworks/tiktok-scraper';
+  } catch { /* fall through */ }
+
+  // Fallback: clockworks/tiktok-profile-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'clockworks/tiktok-profile-scraper',
+        { profiles: [profileUrl], resultsPerPage: 1 },
+        apifyToken,
+        { timeoutSecs: 60 }
+      ) as Record<string, unknown>[];
+      if (items.length) actorUsed = 'clockworks/tiktok-profile-scraper';
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {
       ...empty,
       findings: [`⚠️ Perfil TikTok @${username} não encontrado`],
-      dataSources: ['TikTok via Apify (clockworks/tiktok-profile-scraper)'],
+      dataSources: [`TikTok via Apify (${actorUsed || 'clockworks/tiktok-scraper'})`],
     };
   }
 
-  const d = items[0] as Record<string, unknown>;
+  const d = items[0];
 
   const nn = (val: unknown): number | null => {
     const n = Number(val);
@@ -100,7 +122,7 @@ export async function fetchTiktokProfile(
     profileUrl,
     score: 1,
     findings: [],
-    dataSources: ['TikTok via Apify (clockworks/tiktok-profile-scraper)'],
+    dataSources: [`TikTok via Apify (${actorUsed})`],
   };
 
   if (result.followers !== null)

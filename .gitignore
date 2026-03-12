@@ -3,3 +3,4 @@ ivoire-app/dist
 .DS_Store
 *.env
 .env.local
+serviceAccountKey.json

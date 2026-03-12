@@ -10,6 +10,7 @@ import type {
 import { SUBDIMENSIONS, SCORE_THRESHOLDS } from '../data/scorecard';
 import { RECOMMENDATIONS_LIBRARY } from '../data/recommendations';
 import { applyAllSkills } from '../skills/skillsEngine';
+import { fetchContacts } from './collection';
 
 export function scoreToLevel(score: number): MaturityLevel {
   if (score <= SCORE_THRESHOLDS.Intuitivo.max) return 'Intuitivo';
@@ -207,7 +208,8 @@ export function generateExecutiveNarrative(
 
 export async function finalizeDiagnostic(
   diagnostic: Diagnostic,
-  claudeApiKey?: string
+  claudeApiKey?: string,
+  apifyToken?: string
 ): Promise<Diagnostic> {
   const dimensionScores = calculateDimensionScores(
     diagnostic.subdimensionScores,
@@ -252,6 +254,21 @@ export async function finalizeDiagnostic(
     }
   }
 
+  // Contacts — fetch commercial contacts from site + LinkedIn (requires Apify Token)
+  let contacts = diagnostic.contacts;
+  if (apifyToken && !contacts) {
+    try {
+      contacts = await fetchContacts(
+        diagnostic.input.siteUrl,
+        diagnostic.input.companyName,
+        diagnostic.input.linkedIn,
+        apifyToken
+      );
+    } catch {
+      // non-blocking — contacts are supplementary
+    }
+  }
+
   return {
     ...diagnostic,
     status: 'completed',
@@ -262,6 +279,7 @@ export async function finalizeDiagnostic(
     insights,
     recommendations,
     executiveNarrative,
+    contacts,
     updatedAt: new Date().toISOString(),
   };
 }

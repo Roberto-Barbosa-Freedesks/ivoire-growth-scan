@@ -34,6 +34,11 @@ import { fetchTiktokProfile } from './apifyTiktok';
 import { fetchFacebookPage } from './apifyFacebook';
 import { fetchInstagramProfile } from './apifyInstagram';
 import { analyzeCheckoutWithClaude } from './checkoutAnalysis';
+import { fetchBuiltWith } from './apifyBuiltWith';
+import { fetchGptSearch } from './apifyGptSearch';
+import { fetchGoogleTrends } from './apifyGoogleTrends';
+export { fetchContacts } from './apifyContactExtractor';
+export type { GoogleSearchResult } from './apifyGoogleSearch'; // re-export for future use
 
 export interface CollectionResult {
   score: number; // 1–4
@@ -129,6 +134,25 @@ export async function collectSubdimension(
       if (tech.intercomInstalled) categoriesCovered.push('Suporte/Chat (Intercom)');
       if (tech.hotjarInstalled) categoriesCovered.push('Heatmap/UX (Hotjar)');
       if (tech.consentModeV2) categoriesCovered.push('Consentimento LGPD');
+      const stDataSources = ['Google PageSpeed Insights API (tech detection via network requests)'];
+
+      // Supplementary: BuiltWith for deeper tech stack (CMS, E-commerce, CDN, CRM, A/B Testing, CDP)
+      let builtWithData: Record<string, unknown> = {};
+      const apifyTokenBW = settings.apifyToken ?? '';
+      if (apifyTokenBW) {
+        const bw = await fetchBuiltWith(siteUrl, apifyTokenBW);
+        if (bw.found) {
+          builtWithData = { builtWithCategories: bw.categories, builtWithFindings: bw.findings };
+          stDataSources.push(...bw.dataSources);
+          // Enrich categories covered
+          if (bw.categories.cms.length) categoriesCovered.push(`CMS (${bw.categories.cms.slice(0, 2).join(', ')})`);
+          if (bw.categories.ecommerce.length) categoriesCovered.push(`E-commerce (${bw.categories.ecommerce.slice(0, 2).join(', ')})`);
+          if (bw.categories.crm.length && !tech.hubspotInstalled) categoriesCovered.push(`CRM (${bw.categories.crm.slice(0, 2).join(', ')})`);
+          if (bw.categories.cdp.length) categoriesCovered.push(`CDP (${bw.categories.cdp.slice(0, 2).join(', ')})`);
+          if (bw.categories.abTesting.length) categoriesCovered.push(`A/B Testing (${bw.categories.abTesting.slice(0, 2).join(', ')})`);
+        }
+      }
+
       return {
         score,
         data: {
@@ -144,10 +168,11 @@ export async function collectSubdimension(
           intercomInstalled: tech.intercomInstalled,
           consentModeV2: tech.consentModeV2,
           thirdPartyDomains: tech.thirdPartyDomains,
+          ...builtWithData,
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: ['Google PageSpeed Insights API (tech detection via network requests)'],
+        dataSources: stDataSources,
       };
     }
 
@@ -208,8 +233,30 @@ export async function collectSubdimension(
         );
       }
       const result = analyzeSemanticaGeo(scraped);
+      const sgDataSources = ['Extração JSON-LD do site (CORS proxy)'];
+
+      // Supplementary: GPT Search — LLM brand visibility (GEO/LLMO scoring)
+      let geoLlmData: Record<string, unknown> = {};
+      const apifyTokenSG = settings.apifyToken ?? '';
+      if (apifyTokenSG) {
+        const gpt = await fetchGptSearch(companyName, input.segment, apifyTokenSG);
+        if (gpt.found || gpt.query) {
+          geoLlmData = {
+            llmBrandMentioned: gpt.brandMentioned,
+            llmMentionContext: gpt.mentionContext,
+            llmSources: gpt.sources,
+            llmFindings: gpt.findings,
+          };
+          sgDataSources.push(...gpt.dataSources);
+        }
+      }
+
+      // Boost score if brand appears in LLM results
+      let finalScore = result.score;
+      if (geoLlmData.llmBrandMentioned === true && finalScore < 4) finalScore = Math.min(4, finalScore + 0.5);
+
       return {
-        score: result.score,
+        score: finalScore,
         data: {
           schemaTypes: result.schemaTypes,
           schemaCount: result.schemaCount,
@@ -225,10 +272,11 @@ export async function collectSubdimension(
           hasProduct: result.hasProduct,
           hasArticle: result.hasArticle,
           findings: result.findings,
+          ...geoLlmData,
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: ['Extração JSON-LD do site (CORS proxy)'],
+        dataSources: sgDataSources,
       };
     }
 
@@ -863,6 +911,40 @@ export async function collectSubdimension(
       if (tech) dataSources.push('Google PageSpeed Insights (tech detection)');
       if (scraped) dataSources.push('Análise HTML (CORS proxy)');
 
+      // Supplementary: BuiltWith for AI/ML platform detection
+      const apifyTokenAI = settings.apifyToken ?? '';
+      let builtWithAiData: Record<string, unknown> = {};
+      if (apifyTokenAI) {
+        const bwAi = await fetchBuiltWith(siteUrl, apifyTokenAI);
+        if (bwAi.found) {
+          builtWithAiData = { builtWithCategories: bwAi.categories };
+          dataSources.push(...bwAi.dataSources);
+          // Check for AI/ML platforms from BuiltWith
+          const aiPlatformsFromBW = [
+            ...bwAi.categories.chat,
+            ...bwAi.categories.crm.filter((t) => /ai|ml|gpt|openai|watson|copilot/i.test(t)),
+          ];
+          if (aiPlatformsFromBW.length > 0) {
+            points += 1;
+            findings.push(`✓ Plataformas IA detectadas via BuiltWith: ${aiPlatformsFromBW.slice(0, 3).join(', ')}`);
+          }
+        }
+      }
+
+      // Supplementary: GPT Search — LLM visibility signals
+      let gptAiData: Record<string, unknown> = {};
+      if (apifyTokenAI) {
+        const gptAi = await fetchGptSearch(companyName, input.segment, apifyTokenAI);
+        if (gptAi.found) {
+          gptAiData = { llmBrandMentioned: gptAi.brandMentioned, llmMentionContext: gptAi.mentionContext };
+          dataSources.push(...gptAi.dataSources);
+          if (gptAi.brandMentioned) {
+            points += 1;
+            findings.push('✓ Marca mencionada em resposta de LLM (ChatGPT/GPT-4)');
+          }
+        }
+      }
+
       // Chatbot detection
       const chatbotPlatforms: string[] = [];
       if (tech?.intercomInstalled) chatbotPlatforms.push('Intercom');
@@ -939,6 +1021,8 @@ export async function collectSubdimension(
           nlpSearchPlatforms: nlpPlatforms,
           aiToolsDetected: aiTools,
           findings,
+          ...builtWithAiData,
+          ...gptAiData,
         },
         source: 'auto',
         dataReliability: 'real',
@@ -978,6 +1062,12 @@ export async function collectSubdimension(
         competitorBrand
       );
 
+      // Supplementary: Google Trends — brand search trend over 12 months
+      const competitorNames = (input.competitors ?? [])
+        .slice(0, 2)
+        .map((c) => c.replace(/^https?:\/\/(www\.)?/, '').split('/')[0].split('.')[0]);
+      const trends = await fetchGoogleTrends(companyName, competitorNames, apifyToken);
+
       return {
         score: atp.score,
         data: {
@@ -995,10 +1085,16 @@ export async function collectSubdimension(
           totalSearchVolume: atp.totalSearchVolume,
           actorUsed: atp.actorUsed,
           findings: atp.findings,
+          // Google Trends data
+          trendsFound: trends.found,
+          brandTrendDirection: trends.companyTerm?.trend,
+          brandTrendInterest: trends.companyTerm?.averageInterest,
+          trendsTerms: trends.terms,
+          trendsFindings: trends.findings,
         },
         source: 'auto',
         dataReliability: atp.found ? 'real' : 'insufficient',
-        dataSources: atp.dataSources,
+        dataSources: [...atp.dataSources, ...trends.dataSources],
       };
     }
 
