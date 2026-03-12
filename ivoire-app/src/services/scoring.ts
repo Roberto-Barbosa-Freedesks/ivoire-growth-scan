@@ -11,6 +11,7 @@ import { SUBDIMENSIONS, SCORE_THRESHOLDS } from '../data/scorecard';
 import { RECOMMENDATIONS_LIBRARY } from '../data/recommendations';
 import { applyAllSkills } from '../skills/skillsEngine';
 import { fetchContacts } from './collection';
+import { enrichSubdimensions, countEnriched } from './dataEnrichment';
 
 export function scoreToLevel(score: number): MaturityLevel {
   if (score <= SCORE_THRESHOLDS.Intuitivo.max) return 'Intuitivo';
@@ -211,14 +212,26 @@ export async function finalizeDiagnostic(
   claudeApiKey?: string,
   apifyToken?: string
 ): Promise<Diagnostic> {
-  const dimensionScores = calculateDimensionScores(
+  // ── Data Enrichment V2.0 ──────────────────────────────────────────────────
+  // Fill 'insufficient' gaps with segment-based intelligent estimates
+  // so every subdimension contributes meaningful data to the final score.
+  const enrichedScores = enrichSubdimensions(
     diagnostic.subdimensionScores,
+    diagnostic.input
+  );
+  const enrichedCount = countEnriched(diagnostic.subdimensionScores, enrichedScores);
+  if (enrichedCount > 0) {
+    console.info(`[DataEnrichment] ${enrichedCount} subdimensão(ões) enriquecida(s) com estimativas de segmento`);
+  }
+
+  const dimensionScores = calculateDimensionScores(
+    enrichedScores,
     diagnostic.input.isEcommerce
   );
   const overallScore = calculateOverallScore(dimensionScores);
   const overallLevel = scoreToLevel(overallScore);
-  const insights = generateInsights(diagnostic.subdimensionScores, dimensionScores, diagnostic.input.isEcommerce);
-  const recommendations = generateRecommendations(diagnostic.subdimensionScores, diagnostic.input.isEcommerce);
+  const insights = generateInsights(enrichedScores, dimensionScores, diagnostic.input.isEcommerce);
+  const recommendations = generateRecommendations(enrichedScores, diagnostic.input.isEcommerce);
   const executiveNarrative = generateExecutiveNarrative(
     diagnostic.input.companyName,
     overallScore,
@@ -227,9 +240,10 @@ export async function finalizeDiagnostic(
   );
 
   // Skills Engine — LLM enrichment per subdimension (optional, requires claudeApiKey)
-  let enrichedSubdimensionScores = diagnostic.subdimensionScores;
+  // Operates on enrichedScores so skills can also analyze estimated data
+  let enrichedSubdimensionScores = enrichedScores;
   if (claudeApiKey) {
-    const skillInputs = diagnostic.subdimensionScores
+    const skillInputs = enrichedScores
       .filter((s) => s.source !== 'skipped' && s.source !== 'insufficient')
       .map((s) => ({
         subdimensionId: s.subdimensionId,
@@ -240,7 +254,7 @@ export async function finalizeDiagnostic(
     const skillResults = await applyAllSkills(skillInputs, diagnostic.input, claudeApiKey);
 
     if (skillResults.size > 0) {
-      enrichedSubdimensionScores = diagnostic.subdimensionScores.map((s) => {
+      enrichedSubdimensionScores = enrichedScores.map((s) => {
         const skillResult = skillResults.get(s.subdimensionId);
         if (!skillResult) return s;
         return {
