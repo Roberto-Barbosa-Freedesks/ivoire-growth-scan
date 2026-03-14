@@ -10,7 +10,7 @@
  * Cost: ~$0.01 per domain
  * Free tier ($5/mo): ~500 lookups/month
  *
- * Input actor: { domain: "example.com" }  OR  { url: "https://example.com" }
+ * Input actor: { urls: ["https://example.com"] }  (radeance actors require urls array)
  * Output fields probed:
  *   domainAuthority / domain_authority / da / DA / mozScore / moz_score
  *   backlinks / totalBacklinks / backlinksCount
@@ -96,24 +96,25 @@ export async function fetchUbersuggest(
 
   if (!apifyToken) return empty;
 
+  const fullUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
   let items: unknown[] = [];
 
-  // Primary: domain input
+  // Primary: urls array (radeance actors require this format)
   try {
     items = await runApifyActor(
       'radeance/ubersuggest-scraper',
-      { domain },
+      { urls: [fullUrl] },
       apifyToken,
       { timeoutSecs: 90 }
     );
   } catch { /* fall through */ }
 
-  // Fallback: url input
+  // Fallback: domain string format
   if (!items.length) {
     try {
       items = await runApifyActor(
         'radeance/ubersuggest-scraper',
-        { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
+        { domain },
         apifyToken,
         { timeoutSecs: 90 }
       );

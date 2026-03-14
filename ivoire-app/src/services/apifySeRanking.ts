@@ -12,7 +12,7 @@
  * Cost: ~$0.015 per domain
  * Free tier ($5/mo): ~330 lookups/month
  *
- * Input: { domain: "example.com" }
+ * Input: { urls: ["https://example.com"] }  (radeance actors require urls array)
  * Output fields probed:
  *   domainTrust / domain_trust / dt / DT
  *   pageTrust / page_trust / pt
@@ -97,23 +97,25 @@ export async function fetchSeRanking(
 
   if (!apifyToken) return empty;
 
+  const fullUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
   let items: unknown[] = [];
 
+  // Primary: urls array (radeance actors require this format)
   try {
     items = await runApifyActor(
       'radeance/seranking-scraper',
-      { domain },
+      { urls: [fullUrl] },
       apifyToken,
       { timeoutSecs: 90 }
     );
   } catch { /* fall through */ }
 
-  // Fallback: url format
+  // Fallback: domain string format
   if (!items.length) {
     try {
       items = await runApifyActor(
         'radeance/seranking-scraper',
-        { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
+        { domain },
         apifyToken,
         { timeoutSecs: 90 }
       );

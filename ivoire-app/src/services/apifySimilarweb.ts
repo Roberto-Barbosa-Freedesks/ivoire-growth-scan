@@ -1,12 +1,22 @@
 /**
  * SimilarWeb data via Apify
  *
- * Primary:  epctex/similarweb-scraper (more stable, richer output)
- *   Input:  { url: domain }
- *   Fields: visits, globalRank, bounceRate, avgVisitDuration, pagesPerVisit,
- *           trafficSources{}, topCountries[]
+ * Primary:  epctex/similarweb-scraper
+ *   Input:  { startUrls: [{ url: similarweb_page_url }] }
  *
- * Fallback: curious_coder/similarweb-scraper (legacy)
+ * Fallback 1: radeance/similarweb-scraper (validated ✅)
+ *   Input:  { urls: ["https://domain.com"] }
+ *   Fields: rankGlobal, totalVisits, monthlyVisits, bounceRate, topKeywords, channel mix
+ *
+ * Fallback 2: nc-automations/similarweb-lite (validated ✅)
+ *   Input:  { domains: ["domain.com"] }
+ *   Fields: SiteName, EstimatedMonthlyVisits, GlobalRank, TrafficSources, AiTrafficDetails
+ *
+ * Fallback 3: pro100chok/similarweb-scraper (validated ✅)
+ *   Input:  { domains: ["domain.com"] }
+ *   Fields: EstimatedMonthlyVisits, GlobalRank, TrafficSources, AiTrafficDetails
+ *
+ * Fallback 4: curious_coder/similarweb-scraper (legacy, may require rental)
  *   Input:  { domain }
  *
  * Cost: ~$0.02 per domain | Free tier ($5/mo): ~250 lookups/month
@@ -93,6 +103,7 @@ export async function fetchSimilarweb(
 
   if (!apifyToken) return empty;
 
+  const fullUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
   let items: unknown[] = [];
   let actorUsed = '';
 
@@ -107,7 +118,46 @@ export async function fetchSimilarweb(
     if (items.length) actorUsed = 'epctex/similarweb-scraper';
   } catch { /* fall through */ }
 
-  // Fallback: curious_coder/similarweb-scraper
+  // Fallback 1: radeance/similarweb-scraper (urls array format)
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'radeance/similarweb-scraper',
+        { urls: [fullUrl] },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+      if (items.length) actorUsed = 'radeance/similarweb-scraper';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: nc-automations/similarweb-lite (domains array format)
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'nc-automations/similarweb-lite',
+        { domains: [domain] },
+        apifyToken,
+        { timeoutSecs: 60 }
+      );
+      if (items.length) actorUsed = 'nc-automations/similarweb-lite';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 3: pro100chok/similarweb-scraper (domains array format)
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'pro100chok/similarweb-scraper',
+        { domains: [domain] },
+        apifyToken,
+        { timeoutSecs: 60 }
+      );
+      if (items.length) actorUsed = 'pro100chok/similarweb-scraper';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 4: curious_coder/similarweb-scraper (legacy)
   if (!items.length) {
     try {
       items = await runApifyActor(
@@ -130,14 +180,15 @@ export async function fetchSimilarweb(
 
   const d = items[0] as Record<string, unknown>;
 
-  const sources = (d.trafficSources ?? d.traffic_sources ?? {}) as Record<string, unknown>;
+  // TrafficSources — handles epctex (camelCase), radeance (channelShare obj), nc-automations/pro100chok (PascalCase)
+  const srcObj = (d.trafficSources ?? d.traffic_sources ?? d.TrafficSources ?? d.channelShare ?? {}) as Record<string, unknown>;
   const trafficSources = {
-    direct: pct(sources.direct ?? sources.Direct),
-    search: pct(sources.search ?? sources.Search ?? sources.organicSearch),
-    social: pct(sources.social ?? sources.Social),
-    referral: pct(sources.referral ?? sources.Referral),
-    paid: pct(sources.paid ?? sources.Paid ?? sources.paidSearch),
-    email: pct(sources.email ?? sources.Email ?? sources.mail),
+    direct:   pct(srcObj.direct   ?? srcObj.Direct   ?? srcObj.directTraffic),
+    search:   pct(srcObj.search   ?? srcObj.Search   ?? srcObj.organicSearch ?? srcObj.Organic ?? srcObj['Search']),
+    social:   pct(srcObj.social   ?? srcObj.Social   ?? srcObj.socialMedia),
+    referral: pct(srcObj.referral ?? srcObj.Referral ?? srcObj.Referrals),
+    paid:     pct(srcObj.paid     ?? srcObj.Paid     ?? srcObj.paidSearch    ?? srcObj['Paid Search']),
+    email:    pct(srcObj.email    ?? srcObj.Email    ?? srcObj.mail          ?? srcObj.Mail),
   };
 
   const topCountries: Array<{ country: string; share: number }> = [];
@@ -154,11 +205,19 @@ export async function fetchSimilarweb(
     }
   }
 
-  const monthlyVisits = num(d.monthlyVisits ?? d.monthly_visits ?? d.visits) ?? null;
-  const globalRank = num(d.globalRank ?? d.global_rank ?? d.rank) ?? null;
-  const bounceRate = pct(d.bounceRate ?? d.bounce_rate) ?? null;
-  const avgVisitDuration = num(d.avgVisitDuration ?? d.avg_visit_duration ?? d.averageVisitDuration) ?? null;
-  const pagesPerVisit = num(d.pagesPerVisit ?? d.pages_per_visit) ?? null;
+  // Field aliases cover: epctex, radeance, nc-automations, pro100chok outputs
+  const monthlyVisits = num(
+    d.monthlyVisits ?? d.monthly_visits ?? d.visits ??
+    d.totalVisits   ?? d.EstimatedMonthlyVisits ?? d.estimatedMonthlyVisits
+  ) ?? null;
+  const globalRank = num(
+    d.globalRank ?? d.global_rank ?? d.rank ?? d.rankGlobal ?? d.GlobalRank
+  ) ?? null;
+  const bounceRate = pct(d.bounceRate ?? d.bounce_rate ?? d.BounceRate) ?? null;
+  const avgVisitDuration = num(
+    d.avgVisitDuration ?? d.avg_visit_duration ?? d.averageVisitDuration ?? d.AvgVisitDuration
+  ) ?? null;
+  const pagesPerVisit = num(d.pagesPerVisit ?? d.pages_per_visit ?? d.PagesPerVisit) ?? null;
 
   const result: SimilarwebResult = {
     found: true, monthlyVisits, globalRank, bounceRate, avgVisitDuration, pagesPerVisit,
