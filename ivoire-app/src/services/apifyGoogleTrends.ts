@@ -1,9 +1,14 @@
 /**
  * Google Trends search interest via Apify
  *
- * Actor: apify/google-trends-scraper
+ * Primary:  apify/google-trends-scraper
  *   Input:  { searchTerms: string[], geo: 'BR', timeRange: 'today 12-m' }
- *   Fields: interest[] with date + value per term; timeline data over 12 months
+ *
+ * Fallback 1: data_xplorer/google-trending-now
+ *   Input:  { country: 'BR', category: 'all' }  (returns top trending topics)
+ *
+ * Fallback 2: easyapi/google-realtime-trends-data-scraper
+ *   Input:  { geo: 'BR', hl: 'pt-BR' }
  *
  * Purpose: Track brand search interest trend over 12 months and compare against
  *          up to 2 competitors. Identifies rising, stable or declining brand awareness.
@@ -93,19 +98,44 @@ export async function fetchGoogleTrends(
   if (!apifyToken) return empty;
 
   let items: unknown[] = [];
+  let actorUsed = '';
 
+  // Primary: apify/google-trends-scraper (12-month history)
   try {
     items = await runApifyActor(
       'apify/google-trends-scraper',
-      {
-        searchTerms,
-        geo: 'BR',
-        timeRange: 'today 12-m',
-      },
+      { searchTerms, geo: 'BR', timeRange: 'today 12-m' },
       apifyToken,
       { timeoutSecs: 90 }
     );
+    if (items.length) actorUsed = 'apify/google-trends-scraper';
   } catch { /* fall through */ }
+
+  // Fallback 1: data_xplorer/google-trending-now (realtime trending — no 12-month history but gives trending signal)
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'data_xplorer/google-trending-now',
+        { country: 'BR', category: 'all' },
+        apifyToken,
+        { timeoutSecs: 60 }
+      );
+      if (items.length) actorUsed = 'data_xplorer/google-trending-now';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: easyapi/google-realtime-trends-data-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'easyapi/google-realtime-trends-data-scraper',
+        { geo: 'BR', hl: 'pt-BR' },
+        apifyToken,
+        { timeoutSecs: 60 }
+      );
+      if (items.length) actorUsed = 'easyapi/google-realtime-trends-data-scraper';
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {
@@ -192,7 +222,7 @@ export async function fetchGoogleTrends(
     return {
       ...empty,
       findings: [`Google Trends retornou dados mas sem timeline legível para ${companyName}`],
-      dataSources: ['Google Trends via Apify (apify/google-trends-scraper)'],
+      dataSources: [`Google Trends via Apify (${actorUsed})`],
     };
   }
 
@@ -246,6 +276,6 @@ export async function fetchGoogleTrends(
     terms,
     companyTerm,
     findings,
-    dataSources: ['Google Trends via Apify (apify/google-trends-scraper)'],
+    dataSources: [`Google Trends via Apify (${actorUsed})`],
   };
 }

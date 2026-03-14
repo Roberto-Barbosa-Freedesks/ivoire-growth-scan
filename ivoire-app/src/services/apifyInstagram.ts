@@ -1,7 +1,9 @@
 /**
  * Instagram profile data via Apify
  * Primary:  apify/instagram-scraper
- * Fallback: apify/instagram-profile-scraper
+ * Fallback 1: apify/instagram-profile-scraper
+ * Fallback 2: scraping_solutions/instagram-scraper-followers-following-no-cookies
+ *   Input: { Account: "@username" }  (requires Account field, not usernames[])
  * Returns: followers, posts, bio, website link, verification, business category
  *
  * Cost: ~$0.003 per profile
@@ -93,7 +95,7 @@ export async function fetchInstagramProfile(
     if (items.length) actorUsed = 'apify/instagram-scraper';
   } catch { /* fall through */ }
 
-  // Fallback: apify/instagram-profile-scraper
+  // Fallback 1: apify/instagram-profile-scraper
   if (!items.length) {
     try {
       items = await runApifyActor(
@@ -103,6 +105,19 @@ export async function fetchInstagramProfile(
         { timeoutSecs: 60 }
       ) as Record<string, unknown>[];
       if (items.length) actorUsed = 'apify/instagram-profile-scraper';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: scraping_solutions/instagram-scraper-followers-following-no-cookies
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'scraping_solutions/instagram-scraper-followers-following-no-cookies',
+        { Account: `@${username}` },
+        apifyToken,
+        { timeoutSecs: 60 }
+      ) as Record<string, unknown>[];
+      if (items.length) actorUsed = 'scraping_solutions/instagram-scraper-followers-following-no-cookies';
     } catch { /* give up */ }
   }
 

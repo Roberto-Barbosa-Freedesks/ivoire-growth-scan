@@ -42,6 +42,11 @@ import { fetchSeRanking } from './apifySeRanking';
 import { fetchAmazon } from './apifyAmazon';
 import { fetchGoogleShopping } from './apifyGoogleShopping';
 import { runApifyActor } from './apifyClient';
+import { fetchFbAdsLibrary } from './apifyFbAdsLibrary';
+import { fetchSpyFu } from './apifySpyFu';
+import { fetchAIBrandVisibility } from './apifyAIBrandVisibility';
+import { fetchTechDetector } from './apifyTechDetector';
+import { fetchSeoAudit } from './apifySeoAudit';
 export { fetchContacts } from './apifyContactExtractor';
 export type { GoogleSearchResult } from './apifyGoogleSearch'; // re-export for future use
 
@@ -170,7 +175,7 @@ export async function collectSubdimension(
           ...(partialCategories.length > 0 ? [`✓ Ferramentas detectadas via HTML: ${partialCategories.join(', ')}`] : []),
         ];
 
-        // Still try BuiltWith if Apify is configured
+        // Still try BuiltWith + TechDetector if Apify is configured
         let builtWithPartial: Record<string, unknown> = {};
         if (settings.apifyToken) {
           const bwP = await fetchBuiltWith(siteUrl, settings.apifyToken);
@@ -179,6 +184,22 @@ export async function collectSubdimension(
             if (bwP.categories.cms.length) partialCategories.push(`CMS (${bwP.categories.cms.slice(0, 2).join(', ')})`);
             if (bwP.categories.ecommerce.length) partialCategories.push(`E-commerce (${bwP.categories.ecommerce.slice(0, 2).join(', ')})`);
             smFindings.push(...bwP.findings);
+          }
+          // TechDetector: smart-digital/website-tags-pixels-detector + wappalyzer
+          const td = await fetchTechDetector(siteUrl, settings.apifyToken);
+          if (td.found) {
+            if (td.analyticsTools.length) partialCategories.push(`Analytics (${td.analyticsTools.slice(0, 2).join(', ')})`);
+            if (td.marketingPixels.length) partialCategories.push(`Pixels (${td.marketingPixels.slice(0, 2).join(', ')})`);
+            if (td.crmTools.length) partialCategories.push(`CRM (${td.crmTools.slice(0, 2).join(', ')})`);
+            if (td.abTestingTools.length) partialCategories.push(`A/B Testing (${td.abTestingTools[0]})`);
+            builtWithPartial = {
+              ...builtWithPartial,
+              techDetectorAnalytics: td.analyticsTools,
+              techDetectorPixels: td.marketingPixels,
+              techDetectorCrm: td.crmTools,
+              techDetectorAll: td.allTechnologies,
+            };
+            smFindings.push(...td.findings);
           }
         }
 
@@ -289,6 +310,29 @@ export async function collectSubdimension(
         );
       }
       const result = analyzeSeoOnPage(scraped, context.desktop as never);
+
+      // Supplementary: SEO Audit via Apify (technical audit — broken links, sitemap, schema deep-check)
+      let seoAuditData: Record<string, unknown> = {};
+      const seoOnpageSources: string[] = [
+        'Análise HTML do site (CORS proxy)',
+        ...(context.desktop ? ['Google PageSpeed Insights (SEO score)'] : []),
+      ];
+      if (settings.apifyToken) {
+        const audit = await fetchSeoAudit(siteUrl, settings.apifyToken);
+        if (audit.found) {
+          seoAuditData = {
+            seoAuditScore: audit.seoScore,
+            seoAuditHasSitemap: audit.hasSitemap,
+            seoAuditHasRobots: audit.hasRobotsTxt,
+            seoAuditBrokenLinks: audit.brokenLinks,
+            seoAuditMobileScore: audit.mobileScore,
+            seoAuditIssues: audit.issues,
+            seoAuditFindings: audit.findings,
+          };
+          seoOnpageSources.push(...audit.dataSources);
+        }
+      }
+
       return {
         score: result.score,
         data: {
@@ -312,13 +356,11 @@ export async function collectSubdimension(
           hasContactPage: result.hasContactPage,
           internalLinksCount: result.internalLinksCount,
           findings: result.findings,
+          ...seoAuditData,
         },
         source: 'auto',
         dataReliability: 'real',
-        dataSources: [
-          'Análise HTML do site (CORS proxy)',
-          ...(context.desktop ? ['Google PageSpeed Insights (SEO score)'] : []),
-        ],
+        dataSources: seoOnpageSources,
       };
     }
 
@@ -371,6 +413,23 @@ export async function collectSubdimension(
             llmFindings: gpt.findings,
           };
           sgDataSources.push(...gpt.dataSources);
+        }
+
+        // Additional: AI Brand Visibility — multi-platform LLM check (ChatGPT, Perplexity, Gemini)
+        const aiBrandVizSG = await fetchAIBrandVisibility(companyName, input.segment, apifyTokenSG);
+        if (aiBrandVizSG.found) {
+          geoLlmData = {
+            ...geoLlmData,
+            aiVisibilityMentioned: aiBrandVizSG.brandMentioned,
+            aiVisibilityPlatforms: aiBrandVizSG.platforms,
+            aiVisibilityTotalMentions: aiBrandVizSG.totalMentions,
+            aiOverviewText: aiBrandVizSG.aiOverviewText,
+            aiOverviewMentionsBrand: aiBrandVizSG.aiOverviewMentionsBrand,
+            aiVisibilityFindings: aiBrandVizSG.findings,
+          };
+          sgDataSources.push(...aiBrandVizSG.dataSources);
+          // Upgrade llmBrandMentioned if multi-platform confirmed brand presence
+          if (aiBrandVizSG.brandMentioned) geoLlmData.llmBrandMentioned = true;
         }
       }
 
@@ -635,6 +694,25 @@ export async function collectSubdimension(
         allFindings.push('⚠️ Meta Access Token não configurado — anúncios pagos não verificados');
       }
 
+      // FB Ad Library via Apify (igolaizola) — works without Meta token
+      if (apifyToken) {
+        const fbAds = await fetchFbAdsLibrary(companyName, apifyToken);
+        if (fbAds.found) {
+          paidScore = Math.max(paidScore, fbAds.score);
+          paidData = {
+            ...paidData,
+            fbAdsLibraryFound: true,
+            fbAdsTotalAds: fbAds.totalAds,
+            fbAdsActiveAds: fbAds.activeAds,
+            fbAdsFormats: fbAds.adFormats,
+            fbAdsTopAds: fbAds.topAds,
+            fbAdsSpendLabel: fbAds.estimatedSpendLabel,
+          };
+          allFindings.push(...fbAds.findings);
+          if (fbAds.dataSources.length) dataSources.push(...fbAds.dataSources);
+        }
+      }
+
       // Organic social via Apify — Facebook, Instagram, LinkedIn
       let liScore = 1; let liData: Record<string, unknown> = {};
       if (apifyToken) {
@@ -894,6 +972,25 @@ export async function collectSubdimension(
         }
       }
 
+      // Quinary: SpyFu — organic/paid keyword intelligence + competitor list
+      let spyFuData: Record<string, unknown> = {};
+      let spyFuScore = 1;
+      if (apifyToken) {
+        const spy = await fetchSpyFu(siteUrl, apifyToken);
+        spyFuScore = spy.score;
+        if (spy.found) {
+          spyFuData = {
+            spyFuOrganicKeywords: spy.organicKeywords,
+            spyFuPaidKeywords: spy.paidKeywords,
+            spyFuEstimatedAdSpend: spy.estimatedAdSpend,
+            spyFuOrganicCompetitors: spy.organicCompetitors,
+            spyFuPaidCompetitors: spy.paidCompetitors,
+          };
+          allFindings.push(...spy.findings);
+          if (spy.dataSources.length) allSources.push(...spy.dataSources);
+        }
+      }
+
       // Competitor benchmarking — Ahrefs DR for each competitor URL (up to 2)
       const competitorBenchmark: Array<{
         url: string;
@@ -936,7 +1033,7 @@ export async function collectSubdimension(
       allSources.push(...base.dataSources);
 
       const finalScore = apifyToken
-        ? Math.max(semrushScore, ahrefsScore, ubersuggestScore, seRankingScore, base.score)
+        ? Math.max(semrushScore, ahrefsScore, ubersuggestScore, seRankingScore, spyFuScore, base.score)
         : base.score;
 
       // Flat aliases — DimensionPage SubdimVisuals reads these names
@@ -965,6 +1062,7 @@ export async function collectSubdimension(
           ...ahrefsData,
           ...ubersuggestData,
           ...seRankingData,
+          ...spyFuData,
           authorityScore,
           totalBacklinks,
           referringDomains,
@@ -1477,6 +1575,9 @@ export async function collectSubdimension(
         .map((c) => c.replace(/^https?:\/\/(www\.)?/, '').split('/')[0].split('.')[0]);
       const trends = await fetchGoogleTrends(companyName, competitorNames, apifyToken);
 
+      // Supplementary: AI Brand Visibility — GEO/LLMO signal (ChatGPT, Perplexity, Gemini)
+      const aiBrandViz = await fetchAIBrandVisibility(companyName, input.segment, apifyToken);
+
       return {
         score: atp.score,
         data: {
@@ -1500,10 +1601,17 @@ export async function collectSubdimension(
           brandTrendInterest: trends.companyTerm?.averageInterest,
           trendsTerms: trends.terms,
           trendsFindings: trends.findings,
+          // AI Brand Visibility (GEO/LLMO)
+          aiBrandMentioned: aiBrandViz.brandMentioned,
+          aiBrandTotalMentions: aiBrandViz.totalMentions,
+          aiBrandPlatforms: aiBrandViz.platforms,
+          aiOverviewText: aiBrandViz.aiOverviewText,
+          aiOverviewMentionsBrand: aiBrandViz.aiOverviewMentionsBrand,
+          aiBrandFindings: aiBrandViz.findings,
         },
         source: 'auto',
         dataReliability: atp.found ? 'real' : 'insufficient',
-        dataSources: [...atp.dataSources, ...trends.dataSources],
+        dataSources: [...atp.dataSources, ...trends.dataSources, ...aiBrandViz.dataSources],
       };
     }
 

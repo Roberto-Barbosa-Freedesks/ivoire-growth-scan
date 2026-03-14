@@ -11,9 +11,17 @@
  * Cost: ~$0.01 per domain
  * Free tier ($5/mo): ~500 lookups/month
  *
- * Input actor: { urls: [siteUrl] }  OR  { domain: "example.com" }
+ * Primary:  radeance/ahrefs-scraper
+ *   Input:  { domain: "example.com" }  or  { url: "https://..." }
+ *
+ * Fallback 1: dionysus_way/skinaesthetic_millionaire/ahref-website-authority-checker
+ *   Input:  { domain }  or  { url }
+ *
+ * Fallback 2: radeance/moz-scraper (MOZ Domain Authority)
+ *   Input:  { urls: ["https://example.com"] }
+ *
  * Output fields probed (actor may return either camelCase or snake_case):
- *   domainRating / domain_rating / dr / DR
+ *   domainRating / domain_rating / dr / DR / domainAuthority / da
  *   backlinks / totalBacklinks / backlinksCount
  *   referringDomains / referring_domains / refDomains / domainsCount
  *   organicTraffic / organic_traffic / traffic
@@ -106,12 +114,38 @@ export async function fetchAhrefs(
     );
   } catch { /* fall through */ }
 
-  // Fallback: url input format
+  const fullUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
+
+  // Fallback 1a: radeance/ahrefs-scraper url format
   if (!items.length) {
     try {
       items = await runApifyActor(
         'radeance/ahrefs-scraper',
-        { url: siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}` },
+        { url: fullUrl },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 1b: dionysus_way/ahref-website-authority-checker
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'dionysus_way/skinaesthetic_millionaire/ahref-website-authority-checker',
+        { domain },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: radeance/moz-scraper (MOZ DA as authority proxy)
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'radeance/moz-scraper',
+        { urls: [fullUrl] },
         apifyToken,
         { timeoutSecs: 90 }
       );
@@ -121,8 +155,8 @@ export async function fetchAhrefs(
   if (!items.length) {
     return {
       ...empty,
-      findings: [`⚠️ Ahrefs não retornou dados para ${domain}`],
-      dataSources: ['Ahrefs via Apify (radeance/ahrefs-scraper)'],
+      findings: [`⚠️ Ahrefs/MOZ não retornou dados para ${domain}`],
+      dataSources: ['Ahrefs via Apify (sem dados)'],
     };
   }
 
@@ -130,7 +164,10 @@ export async function fetchAhrefs(
 
   const result: AhrefsResult = {
     found: true,
-    domainRating: num(d.domainRating ?? d.domain_rating ?? d.dr ?? d.DR),
+    domainRating: num(
+      d.domainRating ?? d.domain_rating ?? d.dr ?? d.DR ??
+      d.domainAuthority ?? d.domain_authority ?? d.da ?? d.DA
+    ),
     backlinks: num(d.backlinks ?? d.totalBacklinks ?? d.backlinksCount ?? d.total_backlinks),
     referringDomains: num(
       d.referringDomains ?? d.referring_domains ?? d.refDomains ?? d.domainsCount

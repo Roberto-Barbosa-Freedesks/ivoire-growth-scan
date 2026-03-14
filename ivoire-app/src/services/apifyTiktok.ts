@@ -1,7 +1,10 @@
 /**
  * TikTok profile data via Apify
- * Primary:  clockworks/tiktok-scraper
- * Fallback: clockworks/tiktok-profile-scraper
+ * Primary:    clockworks/tiktok-scraper
+ * Fallback 1: clockworks/tiktok-profile-scraper
+ * Fallback 2: apidojo/tiktok-comments-scraper
+ *   Input: { username } — fetches comments from latest video; extracts author stats
+ *   as a last-resort source of follower/engagement signals
  * Returns: followers, following, likes, videos, bio, verified status
  *
  * Cost: ~$0.002 per profile
@@ -80,7 +83,7 @@ export async function fetchTiktokProfile(
     if (items.length) actorUsed = 'clockworks/tiktok-scraper';
   } catch { /* fall through */ }
 
-  // Fallback: clockworks/tiktok-profile-scraper
+  // Fallback 1: clockworks/tiktok-profile-scraper
   if (!items.length) {
     try {
       items = await runApifyActor(
@@ -90,6 +93,42 @@ export async function fetchTiktokProfile(
         { timeoutSecs: 60 }
       ) as Record<string, unknown>[];
       if (items.length) actorUsed = 'clockworks/tiktok-profile-scraper';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: apidojo/tiktok-comments-scraper
+  // Fetches comments from latest video; author stats embedded in each comment item
+  if (!items.length) {
+    try {
+      const commentItems = await runApifyActor(
+        'apidojo/tiktok-comments-scraper',
+        { username, maxItems: 5 },
+        apifyToken,
+        { timeoutSecs: 60 }
+      ) as Record<string, unknown>[];
+      if (commentItems.length) {
+        // Extract author/video data from the first comment item
+        const c = commentItems[0];
+        const author = (c.author ?? c.user ?? c.video?.author ?? {}) as Record<string, unknown>;
+        const videoStats = (c.video?.stats ?? c.videoStats ?? {}) as Record<string, unknown>;
+        // Build a synthetic profile item from comment metadata
+        const synthetic: Record<string, unknown> = {
+          uniqueId: author.uniqueId ?? author.username ?? username,
+          nickname: author.nickname ?? author.displayName ?? '',
+          verified: author.verified ?? false,
+          fans: author.fans ?? author.followerCount ?? null,
+          followerCount: author.followerCount ?? author.fans ?? null,
+          heart: author.heart ?? author.heartCount ?? null,
+          videoCount: author.videoCount ?? null,
+          signature: author.signature ?? null,
+          // Engagement signal from comment volume
+          _commentCount: commentItems.length,
+          _videoCommentCount: videoStats.commentCount ?? c.commentCount ?? null,
+          _videoPlayCount: videoStats.playCount ?? c.playCount ?? null,
+        };
+        items = [synthetic];
+        actorUsed = 'apidojo/tiktok-comments-scraper';
+      }
     } catch { /* give up */ }
   }
 

@@ -1,11 +1,18 @@
 /**
  * Google SERP results via Apify
  *
- * Actor: apify/google-search-scraper
+ * Primary:  apify/google-search-scraper
  *   Input:  { queries: [query], maxPagesPerQuery: 1, resultsPerPage: 10,
  *             languageCode: 'pt', countryCode: 'br' }
- *   Fields: organicResults[], paidResults[], peopleAlsoAsk[], relatedSearches[],
- *           aiOverviewText, featuredSnippet
+ *
+ * Fallback 1: scraperlink/google-search-results-serp-scraper
+ *   Input:  { query, country: 'br', language: 'pt' }
+ *
+ * Fallback 2: epctex/google-search-scraper
+ *   Input:  { startUrls: [{ url: google_search_url }], maxResultsPerPage: 10 }
+ *
+ * Fields: organicResults[], paidResults[], peopleAlsoAsk[], relatedSearches[],
+ *         aiOverviewText, featuredSnippet
  *
  * Purpose: Google SERP analysis — organic ranking, paid ads presence, People Also Ask,
  *          AI Overview detection, and brand visibility for a target domain.
@@ -73,6 +80,7 @@ export async function fetchGoogleSearch(
 
   let items: unknown[] = [];
 
+  // Primary: apify/google-search-scraper
   try {
     items = await runApifyActor(
       'apify/google-search-scraper',
@@ -87,6 +95,34 @@ export async function fetchGoogleSearch(
       { timeoutSecs: 90 }
     );
   } catch { /* fall through */ }
+
+  // Fallback 1: scraperlink/google-search-results-serp-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'scraperlink/google-search-results-serp-scraper',
+        { query, country: 'br', language: 'pt', maxResults: 10 },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: epctex/google-search-scraper (different from apify/ one)
+  if (!items.length) {
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      items = await runApifyActor(
+        'epctex/google-search-scraper',
+        {
+          startUrls: [{ url: `https://www.google.com.br/search?q=${encodedQuery}&hl=pt-BR&num=10` }],
+          maxResultsPerPage: 10,
+        },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+    } catch { /* give up */ }
+  }
 
   if (!items.length) {
     return {

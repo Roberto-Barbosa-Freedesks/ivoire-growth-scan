@@ -3,9 +3,14 @@
  *
  * Primary:  radeance/semrush-scraper (higher success rate, better parsed output)
  *   Input:  { domain }
- *   Fields: authorityScore, backlinks, referringDomains, organicTraffic, organicKeywords
  *
- * Fallback: devnaz/semrush-scraper (legacy)
+ * Fallback 1: devnaz/semrush-scraper (legacy)
+ *   Input:  { domain }
+ *
+ * Fallback 2: burbn/semrush-keyword-magic-tool
+ *   Input:  { domain }  or  { keyword: domain }
+ *
+ * Fallback 3: marceli/semrush-keyworlds-scraper
  *   Input:  { domain }
  *
  * Cost: ~$0.01 per domain | Free tier ($5/mo): ~500 lookups/month
@@ -95,7 +100,7 @@ export async function fetchSemrush(
     if (items.length) actorUsed = 'radeance/semrush-scraper';
   } catch { /* fall through */ }
 
-  // Fallback: devnaz/semrush-scraper
+  // Fallback 1: devnaz/semrush-scraper
   if (!items.length) {
     try {
       items = await runApifyActor(
@@ -105,6 +110,32 @@ export async function fetchSemrush(
         { timeoutSecs: 90 }
       );
       if (items.length) actorUsed = 'devnaz/semrush-scraper';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 2: burbn/semrush-keyword-magic-tool
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'burbn/semrush-keyword-magic-tool',
+        { domain },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+      if (items.length) actorUsed = 'burbn/semrush-keyword-magic-tool';
+    } catch { /* fall through */ }
+  }
+
+  // Fallback 3: marceli/semrush-keyworlds-scraper
+  if (!items.length) {
+    try {
+      items = await runApifyActor(
+        'marceli/semrush-keyworlds-scraper',
+        { domain },
+        apifyToken,
+        { timeoutSecs: 90 }
+      );
+      if (items.length) actorUsed = 'marceli/semrush-keyworlds-scraper';
     } catch { /* give up */ }
   }
 
